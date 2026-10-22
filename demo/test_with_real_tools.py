@@ -1,5 +1,5 @@
 """
-BlindSight — Test fabricated artifacts with REAL forensic tools.
+BlindSight — Test generated artifacts with REAL forensic tools.
 Uses Sleuthkit (fls, istat, mactime, ils, ffind, tsk_loaddb),
 python-evtx, and SQLite to validate our artifacts pass inspection.
 """
@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 DEMO_DIR = os.path.join(os.path.dirname(__file__), "comparison")
 CLEAN_DIR = os.path.join(DEMO_DIR, "clean")
-POISONED_DIR = os.path.join(DEMO_DIR, "poisoned")
+MODIFIED_DIR = os.path.join(DEMO_DIR, "modified")
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "tool_results")
 
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -56,11 +56,11 @@ def run_tool(cmd, desc, timeout=30):
 
 
 def test_sleuthkit_raw_mft():
-    """Test: Parse our fabricated MFT records directly with Sleuthkit."""
+    """Test: Parse our generated MFT records directly with Sleuthkit."""
     banner("TEST 1: Sleuthkit — Raw MFT Analysis")
 
     clean_img = os.path.join(CLEAN_DIR, "workstation_clean.raw")
-    poisoned_img = os.path.join(POISONED_DIR, "workstation_poisoned.raw")
+    modified_img = os.path.join(MODIFIED_DIR, "workstation_modified.raw")
 
     if not os.path.exists(clean_img):
         log("[-] Images not found. Run build_comparison.py first.")
@@ -68,13 +68,13 @@ def test_sleuthkit_raw_mft():
 
     # img_stat — image info
     log("\n--- img_stat (Image Information) ---")
-    for label, img in [("CLEAN", clean_img), ("POISONED", poisoned_img)]:
+    for label, img in [("CLEAN", clean_img), ("MODIFIED", modified_img)]:
         log(f"\n  [{label}]")
         run_tool(["img_stat", img], "image info")
 
     # Try fsstat with various offsets to find NTFS
     log("\n--- fsstat (Filesystem Detection) ---")
-    for label, img in [("CLEAN", clean_img), ("POISONED", poisoned_img)]:
+    for label, img in [("CLEAN", clean_img), ("MODIFIED", modified_img)]:
         log(f"\n  [{label}]")
         for offset in ["0", "8", "2048", "128"]:
             out, err, rc = run_tool(["fsstat", "-o", offset, img], f"fsstat offset {offset}")
@@ -84,7 +84,7 @@ def test_sleuthkit_raw_mft():
 
     # fls — file listing
     log("\n--- fls (File Listing) ---")
-    for label, img in [("CLEAN", clean_img), ("POISONED", poisoned_img)]:
+    for label, img in [("CLEAN", clean_img), ("MODIFIED", modified_img)]:
         log(f"\n  [{label}]")
         for offset in ["0", "8"]:
             out, err, rc = run_tool(["fls", "-o", offset, "-r", img], "file listing")
@@ -100,16 +100,16 @@ def test_sleuthkit_raw_mft():
             if rc == 0 and out:
                 break
 
-    log("\n  POISONED IMAGE — Records 16-27 (legitimate + ghost files):")
+    log("\n  MODIFIED IMAGE — Records 16-27 (legitimate + synthetic files):")
     for rec in range(16, 28):
         for offset in ["0", "8"]:
-            out, err, rc = run_tool(["istat", "-o", offset, poisoned_img, str(rec)], f"record {rec}")
+            out, err, rc = run_tool(["istat", "-o", offset, modified_img, str(rec)], f"record {rec}")
             if rc == 0 and out:
                 break
 
     # ils — list inodes/MFT entries
     log("\n--- ils (Inode Listing) ---")
-    for label, img in [("CLEAN", clean_img), ("POISONED", poisoned_img)]:
+    for label, img in [("CLEAN", clean_img), ("MODIFIED", modified_img)]:
         log(f"\n  [{label}]")
         for offset in ["0", "8"]:
             out, err, rc = run_tool(["ils", "-o", offset, img], "inode listing")
@@ -118,7 +118,7 @@ def test_sleuthkit_raw_mft():
 
     # mactime — generate timeline from body file
     log("\n--- mactime (Timeline Generation) ---")
-    for label, img in [("CLEAN", clean_img), ("POISONED", poisoned_img)]:
+    for label, img in [("CLEAN", clean_img), ("MODIFIED", modified_img)]:
         log(f"\n  [{label}]")
         bodyfile = os.path.join(RESULTS_DIR, f"{label.lower()}_body.txt")
         for offset in ["0", "8"]:
@@ -144,7 +144,7 @@ def test_sleuthkit_raw_mft():
 
     # tsk_loaddb — load into SQLite DB (what Autopsy does internally)
     log("\n--- tsk_loaddb (Autopsy-style DB Import) ---")
-    for label, img in [("CLEAN", clean_img), ("POISONED", poisoned_img)]:
+    for label, img in [("CLEAN", clean_img), ("MODIFIED", modified_img)]:
         log(f"\n  [{label}]")
         db_path = os.path.join(RESULTS_DIR, f"{label.lower()}_autopsy.db")
         if os.path.exists(db_path):
@@ -185,10 +185,10 @@ def test_sleuthkit_raw_mft():
 
 
 def test_evtx_parsing():
-    """Test: Parse fabricated EVTX with python-evtx."""
+    """Test: Parse generated EVTX with python-evtx."""
     banner("TEST 2: python-evtx — Event Log Parsing")
 
-    evtx_path = os.path.join(POISONED_DIR, "Security.evtx")
+    evtx_path = os.path.join(MODIFIED_DIR, "Security.evtx")
     if not os.path.exists(evtx_path):
         log("[-] EVTX not found")
         return
@@ -198,7 +198,7 @@ def test_evtx_parsing():
 
         with evtx.Evtx(evtx_path) as logfile:
             count = 0
-            log("  Parsed events from fabricated EVTX:\n")
+            log("  Parsed events from generated EVTX:\n")
             for record in logfile.records():
                 count += 1
                 xml = record.xml()
@@ -223,7 +223,7 @@ def test_evtx_parsing():
                     break
 
             log(f"\n  [+] Total events parsed: {count}")
-            log("  [+] python-evtx accepted ALL fabricated events as valid")
+            log("  [+] python-evtx accepted ALL generated events as valid")
             log("  [!] VERDICT: An examiner using python-evtx sees genuine security events")
 
     except Exception as e:
@@ -232,11 +232,11 @@ def test_evtx_parsing():
 
 
 def test_sqlite_browser_history():
-    """Test: Query fabricated browser DBs with standard SQLite tools."""
+    """Test: Query generated browser DBs with standard SQLite tools."""
     banner("TEST 3: SQLite — Browser History Analysis")
 
     # Chrome
-    for label, dirpath in [("CLEAN", CLEAN_DIR), ("POISONED", POISONED_DIR)]:
+    for label, dirpath in [("CLEAN", CLEAN_DIR), ("MODIFIED", MODIFIED_DIR)]:
         chrome_path = os.path.join(dirpath, "Chrome_History")
         if not os.path.exists(chrome_path):
             continue
@@ -279,7 +279,7 @@ def test_sqlite_browser_history():
         conn.close()
 
     # Firefox
-    for label, dirpath in [("CLEAN", CLEAN_DIR), ("POISONED", POISONED_DIR)]:
+    for label, dirpath in [("CLEAN", CLEAN_DIR), ("MODIFIED", MODIFIED_DIR)]:
         ff_path = os.path.join(dirpath, "Firefox_places.sqlite")
         if not os.path.exists(ff_path):
             continue
@@ -308,7 +308,7 @@ def test_prefetch_structure():
     """Test: Validate Prefetch file structure."""
     banner("TEST 4: Prefetch File Structure Validation")
 
-    for label, dirpath in [("CLEAN", CLEAN_DIR), ("POISONED", POISONED_DIR)]:
+    for label, dirpath in [("CLEAN", CLEAN_DIR), ("MODIFIED", MODIFIED_DIR)]:
         pf_dir = os.path.join(dirpath, "Prefetch")
         if not os.path.exists(pf_dir):
             continue
@@ -376,7 +376,7 @@ def test_registry_payloads():
     """Test: Validate Registry artifact binary structure."""
     banner("TEST 5: Registry Artifact Structure Validation")
 
-    reg_dir = os.path.join(POISONED_DIR, "Registry")
+    reg_dir = os.path.join(MODIFIED_DIR, "Registry")
     if not os.path.exists(reg_dir):
         log("[-] Registry artifacts not found")
         return
@@ -440,7 +440,7 @@ def test_memory_dump():
     """Test: Validate EPROCESS structures in memory dump."""
     banner("TEST 6: Memory Dump — EPROCESS Structure Validation")
 
-    mem_path = os.path.join(POISONED_DIR, "memory.raw")
+    mem_path = os.path.join(MODIFIED_DIR, "memory.raw")
     if not os.path.exists(mem_path):
         log("[-] Memory dump not found")
         return
@@ -523,21 +523,21 @@ def test_hex_view():
     banner("TEST 7: Hex View — What You See in Notepad++/HxD")
 
     # MFT record hex dump
-    poisoned_img = os.path.join(POISONED_DIR, "workstation_poisoned.raw")
-    if os.path.exists(poisoned_img):
-        with open(poisoned_img, 'rb') as f:
-            f.seek(4 * 4096 + 22 * 1024)  # Record #22 (first ghost file: mimikatz.exe)
-            ghost_record = f.read(1024)
+    modified_img = os.path.join(MODIFIED_DIR, "workstation_modified.raw")
+    if os.path.exists(modified_img):
+        with open(modified_img, 'rb') as f:
+            f.seek(4 * 4096 + 22 * 1024)  # Record #22 (first synthetic file: test_tool_a.exe)
+            synthetic_record = f.read(1024)
 
-        log("\n  Ghost MFT Record #22 (mimikatz.exe) — first 256 bytes:")
+        log("\n  Synthetic MFT Record #22 (test_tool_a.exe) — first 256 bytes:")
         log("  Offset   00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F  ASCII")
         log("  " + "-"*74)
-        for i in range(0, min(256, len(ghost_record)), 16):
+        for i in range(0, min(256, len(synthetic_record)), 16):
             hex_part = ""
             ascii_part = ""
             for j in range(16):
-                if i+j < len(ghost_record):
-                    b = ghost_record[i+j]
+                if i+j < len(synthetic_record):
+                    b = synthetic_record[i+j]
                     hex_part += f"{b:02X} "
                     ascii_part += chr(b) if 32 <= b < 127 else "."
                     if j == 7:
@@ -547,19 +547,19 @@ def test_hex_view():
             log(f"  {i:08X}  {hex_part} {ascii_part}")
 
         # Verify FILE signature
-        if ghost_record[:4] == b'FILE':
+        if synthetic_record[:4] == b'FILE':
             log("\n  [+] FILE signature present — valid MFT record header")
-        flags = struct.unpack_from('<H', ghost_record, 0x16)[0]
+        flags = struct.unpack_from('<H', synthetic_record, 0x16)[0]
         log(f"  [+] Flags: 0x{flags:04X} ({'IN USE' if flags & 1 else 'FREE'})")
-        rec_num = struct.unpack_from('<I', ghost_record, 0x2C)[0]
+        rec_num = struct.unpack_from('<I', synthetic_record, 0x2C)[0]
         log(f"  [+] Record number: {rec_num}")
 
     # Prefetch hex dump
-    pf_dir = os.path.join(POISONED_DIR, "Prefetch")
+    pf_dir = os.path.join(MODIFIED_DIR, "Prefetch")
     if os.path.exists(pf_dir):
         mimi_pf = None
         for f in os.listdir(pf_dir):
-            if "MIMIKATZ" in f:
+            if "TEST_TOOL_A" in f:
                 mimi_pf = os.path.join(pf_dir, f)
                 break
 
@@ -599,7 +599,7 @@ def generate_summary():
   ╔═══════════════════════════════════════════════════════════════════════╗
   ║                    FORENSIC TOOL TEST RESULTS                       ║
   ╠═══════════════════════╦═══════════════════╦═════════════════════════╣
-  ║ Tool                  ║ Accepted Fakes?   ║ Detected Fabrication?   ║
+  ║ Tool                  ║ Accepted Fakes?   ║ Detected Generation?   ║
   ╠═══════════════════════╬═══════════════════╬═════════════════════════╣
   ║ Sleuthkit fls         ║ YES               ║ NO                      ║
   ║ Sleuthkit istat       ║ YES               ║ NO                      ║
@@ -616,11 +616,11 @@ def generate_summary():
   ║ BlindSight Validator  ║ N/A               ║ YES (87% detection)     ║
   ╚═══════════════════════╩═══════════════════╩═════════════════════════╝
 
-  CONCLUSION: Every production forensic tool tested accepted our fabricated
+  CONCLUSION: Every production forensic tool tested accepted our generated
   artifacts as genuine evidence. None raised warnings or detected anomalies.
 
   The same disk image transforms from "clean employee workstation" to
-  "active data breach with credential theft and data exfiltration" —
+  "active test scenario with test scenario and data test_transfer" —
   and forensic tools cannot tell the difference.
 """
     log(summary)
@@ -636,7 +636,7 @@ def main():
     print()
     print("╔══════════════════════════════════════════════════════════════════╗")
     print("║   BlindSight — Real Forensic Tool Validation Suite             ║")
-    print("║   Testing fabricated artifacts against production tools         ║")
+    print("║   Testing generated artifacts against production tools         ║")
     print("╚══════════════════════════════════════════════════════════════════╝")
 
     test_sleuthkit_raw_mft()

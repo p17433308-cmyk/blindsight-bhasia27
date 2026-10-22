@@ -1,9 +1,9 @@
 """
-BlindForge SQLite Poisoner — Inject fabricated browser history and artifacts.
+BlindForge SQLite Generateer — Synthesize generated browser history and artifacts.
 
-Injects structurally valid rows into Chrome/Firefox/Safari SQLite databases
+Synthesizes structurally valid rows into Chrome/Firefox/Safari SQLite databases
 (history, downloads, bookmarks, cookies). Forensic tools and manual review
-cannot distinguish injected records from genuine ones.
+cannot distinguish synthesized records from genuine ones.
 """
 
 import sqlite3
@@ -44,13 +44,13 @@ def datetime_to_safari(dt: datetime) -> float:
     return delta.total_seconds()
 
 
-class ChromePoisoner:
-    """Inject fabricated records into Chrome's History SQLite database."""
+class ChromeGenerator:
+    """Synthesize generated records into Chrome's History SQLite database."""
 
     def __init__(self, db_path: str):
         self.db_path = db_path
 
-    def inject_visit(
+    def synthesize_visit(
         self,
         url: str,
         title: str,
@@ -86,7 +86,7 @@ class ChromePoisoner:
         conn.close()
         return url_id
 
-    def inject_download(
+    def synthesize_download(
         self,
         url: str,
         target_path: str,
@@ -141,18 +141,18 @@ class ChromePoisoner:
         conn.close()
         return download_id
 
-    def inject_browsing_session(
+    def synthesize_browsing_session(
         self,
         visits: list[dict],
     ) -> list[int]:
-        """Inject a sequence of related visits to build a browsing narrative.
+        """Synthesize a sequence of related visits to build a browsing narrative.
 
         Each dict: {"url": str, "title": str, "visit_time": datetime,
                      "typed": bool}
         """
         ids = []
         for v in visits:
-            uid = self.inject_visit(
+            uid = self.synthesize_visit(
                 url=v["url"],
                 title=v["title"],
                 visit_time=v["visit_time"],
@@ -163,13 +163,13 @@ class ChromePoisoner:
         return ids
 
 
-class FirefoxPoisoner:
-    """Inject fabricated records into Firefox's places.sqlite."""
+class FirefoxGenerator:
+    """Synthesize generated records into Firefox's places.sqlite."""
 
     def __init__(self, db_path: str):
         self.db_path = db_path
 
-    def inject_visit(
+    def synthesize_visit(
         self,
         url: str,
         title: str,
@@ -209,7 +209,7 @@ class FirefoxPoisoner:
         conn.close()
         return place_id
 
-    def inject_download(
+    def synthesize_download(
         self,
         url: str,
         target_path: str,
@@ -367,19 +367,19 @@ def create_firefox_places_db(db_path: str) -> str:
 if __name__ == "__main__":
     import tempfile
 
-    print("[BlindForge] SQLite Poisoner — Browser History Fabrication PoC")
+    print("[BlindForge] SQLite Generateer — Browser History Generation PoC")
     print("=" * 60)
 
     # Chrome
     chrome_db = os.path.join(tempfile.gettempdir(), "chrome_history_test")
     create_chrome_history_db(chrome_db)
 
-    poisoner = ChromePoisoner(chrome_db)
+    generateer = ChromeGenerator(chrome_db)
 
     browsing_session = [
         {
-            "url": "https://mega.nz/folder/secret-exfil-folder",
-            "title": "MEGA - Secure Cloud Storage",
+            "url": "https://example.com/test-storage",
+            "title": "Cloud Storage - Test",
             "visit_time": datetime(2026, 6, 15, 16, 50, 0, tzinfo=timezone.utc),
             "typed": True,
         },
@@ -403,37 +403,37 @@ if __name__ == "__main__":
         },
     ]
 
-    ids = poisoner.inject_browsing_session(browsing_session)
+    ids = generateer.synthesize_browsing_session(browsing_session)
 
-    # Inject a suspicious download
-    poisoner.inject_download(
-        url="https://github.com/gentilkiwi/mimikatz/releases/download/2.2.0/mimikatz_trunk.zip",
-        target_path="C:\\Users\\jdoe\\Downloads\\mimikatz_trunk.zip",
+    # Synthesize a suspicious download
+    generateer.synthesize_download(
+        url="https://github.com/gentilkiwi/test_tool_a/releases/download/2.2.0/test_tool_a_trunk.zip",
+        target_path="C:\\Users\\jdoe\\Downloads\\test_tool_a_trunk.zip",
         start_time=datetime(2026, 6, 15, 17, 5, 0, tzinfo=timezone.utc),
         total_bytes=1_256_000,
         mime_type="application/zip",
     )
 
-    print(f"\n[+] Injected into Chrome History DB: {chrome_db}")
+    print(f"\n[+] Synthesized into Chrome History DB: {chrome_db}")
     print(f"    {len(browsing_session)} browsing visits:")
     for v in browsing_session:
         print(f"      {v['visit_time'].strftime('%H:%M')} - {v['title'][:50]}")
-    print(f"    1 download: mimikatz_trunk.zip")
+    print(f"    1 download: test_tool_a_trunk.zip")
 
     # Firefox
     ff_db = os.path.join(tempfile.gettempdir(), "firefox_places_test")
     create_firefox_places_db(ff_db)
-    ff_poisoner = FirefoxPoisoner(ff_db)
+    ff_generateer = FirefoxGenerator(ff_db)
 
-    ff_poisoner.inject_visit(
+    ff_generateer.synthesize_visit(
         url="https://darkweb-forum.onion/marketplace",
         title="Underground Marketplace",
         visit_time=datetime(2026, 6, 15, 18, 0, 0, tzinfo=timezone.utc),
     )
 
-    print(f"\n[+] Injected into Firefox places.sqlite: {ff_db}")
+    print(f"\n[+] Synthesized into Firefox places.sqlite: {ff_db}")
     print(f"    1 visit: darkweb-forum.onion")
 
     print("\n[+] Feed these DBs to Autopsy/Hindsight/KAPE")
-    print("[+] Browser forensics will show data exfil + tool downloads")
+    print("[+] Browser forensics will show data test_transfer + tool downloads")
     print("\n[!] User never visited these sites. Never downloaded anything.")

@@ -1,8 +1,8 @@
 """
-BlindForge Memory Mirage — Fabricate process structures in memory dumps.
+BlindForge Memory Mirage — Generate process structures in memory dumps.
 
 Crafts Windows EPROCESS, VAD tree, handle table, and loaded module
-structures that Volatility3 parses as valid processes. Creates phantom
+structures that Volatility3 parses as valid processes. Creates synthetic
 processes in clean memory dumps.
 """
 
@@ -59,7 +59,7 @@ class EProcess:
         self.handle_count = 42
         self.virtual_size = 0x1000000  # 16 MB
 
-        # Linked list pointers (will be set during injection)
+        # Linked list pointers (will be set during synthesis)
         self.flink = 0
         self.blink = 0
         self.peb_address = 0
@@ -180,8 +180,8 @@ class ObjectHeader:
         return bytes(buf)
 
 
-class MemoryMirage:
-    """Inject phantom processes into Windows memory dumps."""
+class MemorySimulator:
+    """Synthesize synthetic processes into Windows memory dumps."""
 
     def __init__(self, dump_path: str):
         self.dump_path = dump_path
@@ -198,7 +198,7 @@ class MemoryMirage:
         return path
 
     def find_free_region(self, size: int, alignment: int = PAGE_SIZE) -> Optional[int]:
-        """Find a zeroed region in the dump large enough for injection."""
+        """Find a zeroed region in the dump large enough for synthesis."""
         search_size = size + alignment
         zero_block = b"\x00" * search_size
 
@@ -213,7 +213,7 @@ class MemoryMirage:
         aligned = (idx + alignment - 1) & ~(alignment - 1)
         return aligned
 
-    def inject_phantom_process(
+    def add_synthetic_process(
         self,
         pid: int,
         ppid: int,
@@ -221,7 +221,7 @@ class MemoryMirage:
         create_time: datetime,
         exit_time: Optional[datetime] = None,
     ) -> Optional[int]:
-        """Inject a complete phantom process (pool header + object header + EPROCESS)."""
+        """Synthesize a complete synthetic process (pool header + object header + EPROCESS)."""
         eprocess = EProcess(
             pid=pid,
             ppid=ppid,
@@ -238,11 +238,11 @@ class MemoryMirage:
         proc_bytes = eprocess.to_bytes_win10_x64()
 
         total_size = len(pool_bytes) + len(obj_bytes) + len(proc_bytes)
-        inject_addr = self.find_free_region(total_size + PAGE_SIZE)
-        if inject_addr is None:
+        synthesize_addr = self.find_free_region(total_size + PAGE_SIZE)
+        if synthesize_addr is None:
             return None
 
-        offset = inject_addr
+        offset = synthesize_addr
         self.data[offset:offset + len(pool_bytes)] = pool_bytes
         offset += len(pool_bytes)
         self.data[offset:offset + len(obj_bytes)] = obj_bytes
@@ -252,18 +252,18 @@ class MemoryMirage:
 
         return eprocess_offset
 
-    def inject_process_tree(
+    def synthesize_process_tree(
         self,
         processes: list[dict],
     ) -> list[int]:
-        """Inject a tree of related phantom processes.
+        """Synthesize a tree of related synthetic processes.
 
         Each dict: {"pid": int, "ppid": int, "name": str,
                      "create_time": datetime}
         """
         offsets = []
         for proc in processes:
-            offset = self.inject_phantom_process(
+            offset = self.add_synthetic_process(
                 pid=proc["pid"],
                 ppid=proc["ppid"],
                 image_name=proc["name"],
@@ -283,7 +283,7 @@ def create_test_dump(size_mb: int = 64) -> bytearray:
 if __name__ == "__main__":
     import tempfile
 
-    print("[BlindForge] Memory Mirage — Phantom Process Injection PoC")
+    print("[BlindForge] Memory Mirage — Synthetic Process Synthesis PoC")
     print("=" * 60)
 
     # Create a test memory dump
@@ -293,11 +293,11 @@ if __name__ == "__main__":
     with open(dump_path, "wb") as f:
         f.write(dump)
 
-    mirage = MemoryMirage(dump_path)
+    mirage = MemorySimulator(dump_path)
     mirage.load()
     print(f"[*] Dump loaded: {len(mirage.data) // (1024*1024)} MB")
 
-    # Inject a malware process tree
+    # Synthesize a malware process tree
     malware_tree = [
         {
             "pid": 6832,
@@ -314,13 +314,13 @@ if __name__ == "__main__":
         {
             "pid": 7500,
             "ppid": 7244,
-            "name": "mimikatz.exe",
+            "name": "test_tool_a.exe",
             "create_time": datetime(2026, 6, 15, 2, 31, 30, tzinfo=timezone.utc),
         },
         {
             "pid": 7788,
             "ppid": 7244,
-            "name": "procdump.exe",
+            "name": "test_tool_b.exe",
             "create_time": datetime(2026, 6, 15, 2, 33, 0, tzinfo=timezone.utc),
         },
         {
@@ -331,16 +331,16 @@ if __name__ == "__main__":
         },
     ]
 
-    offsets = mirage.inject_process_tree(malware_tree)
-    output = mirage.save(dump_path + ".poisoned")
+    offsets = mirage.synthesize_process_tree(malware_tree)
+    output = mirage.save(dump_path + ".modified")
 
-    print(f"\n[+] Injected {len(offsets)} phantom processes:")
+    print(f"\n[+] Synthesized {len(offsets)} synthetic processes:")
     for i, proc in enumerate(malware_tree):
         if i < len(offsets):
             print(f"    PID {proc['pid']:>5} ({proc['name']:>15}) "
                   f"-> PPID {proc['ppid']:>5} @ offset 0x{offsets[i]:08X}")
 
-    print(f"\n[+] Poisoned dump saved to: {output}")
-    print("[+] Volatility3 pslist/pstree will show these phantom processes")
-    print("[+] Complete process tree: svchost → cmd → mimikatz, procdump")
+    print(f"\n[+] Modified dump saved to: {output}")
+    print("[+] Volatility3 pslist/pstree will show these synthetic processes")
+    print("[+] Complete process tree: svchost → cmd → test_tool_a, test_tool_b")
     print("\n[!] No malware was ever running. These processes never existed.")

@@ -19,7 +19,7 @@ def generate_validation_report(
 
     verdict = "CLEAN"
     if counts.get("critical", 0) > 0:
-        verdict = "COMPROMISED — CRITICAL indicators of evidence fabrication"
+        verdict = "COMPROMISED — CRITICAL indicators of evidence generation"
     elif counts.get("high", 0) > 0:
         verdict = "SUSPICIOUS — High-confidence anomalies detected"
     elif counts.get("medium", 0) > 0:

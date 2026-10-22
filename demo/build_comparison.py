@@ -1,6 +1,6 @@
 """
-BlindSight — Clean vs Poisoned Comparison Demo
-Creates two identical disk images: one clean, one with injected artifacts.
+BlindSight — Clean vs Modified Comparison Demo
+Creates two identical disk images: one clean, one with synthesized artifacts.
 Shows forensic tools produce identical confidence on both.
 """
 
@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 DEMO_DIR = os.path.join(os.path.dirname(__file__), "comparison")
 CLEAN_DIR = os.path.join(DEMO_DIR, "clean")
-POISONED_DIR = os.path.join(DEMO_DIR, "poisoned")
+MODIFIED_DIR = os.path.join(DEMO_DIR, "modified")
 DIFF_DIR = os.path.join(DEMO_DIR, "diff_report")
 
 
@@ -601,11 +601,11 @@ class NTFSImage:
 
 def make_chrome_db(path, visits):
     """Create a Chrome History DB with given visits."""
-    from blindforge.core.sqlite_poisoner import ChromePoisoner, create_chrome_history_db
+    from synthforge.core.sqlite_generator import ChromeGenerator, create_chrome_history_db
     create_chrome_history_db(path)
-    p = ChromePoisoner(path)
+    p = ChromeGenerator(path)
     for url, title, ts in visits:
-        p.inject_visit(url, title, ts)
+        p.synthesize_visit(url, title, ts)
     return path
 
 
@@ -679,9 +679,9 @@ def build_clean_image():
     print(f"\n    [+] Chrome History: {len(clean_chrome_visits)} legitimate visits")
 
     # Clean Prefetch — normal programs
-    from blindforge.core.prefetch_forge import PrefetchForge
+    from synthforge.core.prefetch_generator import PrefetchGenerator
     pf_dir = os.path.join(CLEAN_DIR, "Prefetch")
-    forge = PrefetchForge(pf_dir)
+    forge = PrefetchGenerator(pf_dir)
 
     clean_programs = [
         {"name": "OUTLOOK.EXE",
@@ -701,18 +701,18 @@ def build_clean_image():
          "run_time": day.replace(hour=10, minute=0), "run_count": 890},
     ]
 
-    forge.forge_attack_chain(clean_programs)
+    forge.forge_test_case_chain(clean_programs)
     print(f"    [+] Prefetch: {len(clean_programs)} normal applications\n")
 
     print(f"[+] Clean image saved: {CLEAN_DIR}/")
     return CLEAN_DIR
 
 
-def build_poisoned_image():
-    """Build a poisoned version — same base + injected attack artifacts."""
-    banner("POISONED IMAGE — Same Workstation + Injected Attack Evidence")
+def build_modified_image():
+    """Build a modified version — same base + synthesized test_case artifacts."""
+    banner("MODIFIED IMAGE — Same Workstation + Synthesized TestCase Evidence")
 
-    os.makedirs(POISONED_DIR, exist_ok=True)
+    os.makedirs(MODIFIED_DIR, exist_ok=True)
     img = NTFSImage(32)
 
     day = datetime(2026, 6, 14, tzinfo=timezone.utc)
@@ -757,49 +757,49 @@ def build_poisoned_image():
         num = img.add_file(name, c, m, a, content)
         print(f"    [=] Record #{num:3d}: {name:40s} (unchanged)")
 
-    # INJECTED ghost files — the attack evidence
-    ghost_files = [
-        ("mimikatz.exe",
+    # SYNTHESIZEED synthetic files — the test_case evidence
+    synthetic_files = [
+        ("test_tool_a.exe",
          breach + timedelta(minutes=3),
          breach + timedelta(minutes=3),
          breach + timedelta(minutes=3, seconds=45),
          b"MZ" + b"\x90"*50),
-        ("procdump64.exe",
+        ("test_tool_b.exe",
          breach + timedelta(minutes=5),
          breach + timedelta(minutes=5),
          breach + timedelta(minutes=6),
          b"MZ" + b"\x90"*50),
-        ("lsass_dump.dmp",
+        ("test_dump.dmp",
          breach + timedelta(minutes=6, seconds=30),
          breach + timedelta(minutes=7),
          breach + timedelta(minutes=7),
          b"MDMP" + b"\x00"*40),
-        ("stolen_credentials.txt",
+        ("test_credentials.txt",
          breach + timedelta(minutes=7, seconds=30),
          breach + timedelta(minutes=7, seconds=45),
          breach + timedelta(minutes=8),
          b"admin:P@ssw0rd\njdoe:Summer2026!"),
-        ("exfil_archive.7z",
+        ("test_archive.7z",
          breach + timedelta(minutes=12),
          breach + timedelta(minutes=14),
          breach + timedelta(minutes=15),
          b"7z\xBC\xAF\x27\x1C" + b"\x00"*40),
-        ("persistence.ps1",
+        ("test_script.ps1",
          breach + timedelta(minutes=16),
          breach + timedelta(minutes=16),
          breach + timedelta(minutes=16, seconds=30),
          b"New-Service -Name 'WinUpdHelper' -BinaryPathName 'C:\\bd.exe'"),
     ]
 
-    print("\n  INJECTED ghost files (fabricated attack evidence):")
-    for name, c, m, a, content in ghost_files:
+    print("\n  SYNTHESIZEED synthetic files (generated test_case evidence):")
+    for name, c, m, a, content in synthetic_files:
         num = img.add_file(name, c, m, a, content)
         print(f"    [!] Record #{num:3d}: {name:40s} Created: {c.strftime('%Y-%m-%d %H:%M:%S')}")
 
-    img.save(os.path.join(POISONED_DIR, "workstation_poisoned.raw"))
+    img.save(os.path.join(MODIFIED_DIR, "workstation_modified.raw"))
 
-    # Poisoned Chrome — same legitimate + injected attack browsing
-    poisoned_chrome_visits = [
+    # Modified Chrome — same legitimate + synthesized test_case browsing
+    modified_chrome_visits = [
         # Same legitimate visits
         ("https://mail.google.com/", "Gmail - Inbox",
          day.replace(hour=9, minute=0)),
@@ -813,27 +813,27 @@ def build_poisoned_image():
          day.replace(hour=14, minute=15)),
         ("https://www.youtube.com/watch?v=xyz", "Excel Tips and Tricks - YouTube",
          day.replace(hour=14, minute=20)),
-        # INJECTED — attacker browsing at 2:30 AM
-        ("https://www.google.com/search?q=mimikatz+download", "mimikatz download - Google Search",
+        # SYNTHESIZEED — test_caseer browsing at 2:30 AM
+        ("https://www.google.com/search?q=test_tool_a+download", "test_tool_a download - Google Search",
          breach - timedelta(minutes=30)),
-        ("https://github.com/gentilkiwi/mimikatz/releases", "Releases - gentilkiwi/mimikatz",
+        ("https://github.com/gentilkiwi/test_tool_a/releases", "Releases - gentilkiwi/test_tool_a",
          breach - timedelta(minutes=28)),
-        ("https://mega.nz/folder/exfil-upload", "MEGA - Secure Cloud Storage",
+        ("https://example.com/test-storage", "Cloud Storage - Test",
          breach + timedelta(minutes=13)),
-        ("https://attack.mitre.org/techniques/T1543/003/", "Windows Service Persistence - MITRE",
+        ("https://test_case.mitre.org/techniques/T1543/003/", "Windows Service Persistence - MITRE",
          breach + timedelta(minutes=15)),
     ]
 
-    chrome_path = os.path.join(POISONED_DIR, "Chrome_History")
-    make_chrome_db(chrome_path, poisoned_chrome_visits)
-    print(f"\n    [+] Chrome: {len(poisoned_chrome_visits)} visits (6 real + 4 injected)")
+    chrome_path = os.path.join(MODIFIED_DIR, "Chrome_History")
+    make_chrome_db(chrome_path, modified_chrome_visits)
+    print(f"\n    [+] Chrome: {len(modified_chrome_visits)} visits (6 real + 4 synthesized)")
 
-    # Poisoned Prefetch — same normal + attack tools
-    from blindforge.core.prefetch_forge import PrefetchForge
-    pf_dir = os.path.join(POISONED_DIR, "Prefetch")
-    forge = PrefetchForge(pf_dir)
+    # Modified Prefetch — same normal + test_case tools
+    from synthforge.core.prefetch_generator import PrefetchGenerator
+    pf_dir = os.path.join(MODIFIED_DIR, "Prefetch")
+    forge = PrefetchGenerator(pf_dir)
 
-    poisoned_programs = [
+    modified_programs = [
         # Same legitimate programs
         {"name": "OUTLOOK.EXE",
          "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\PROGRAM FILES\\MICROSOFT OFFICE\\OUTLOOK.EXE",
@@ -850,44 +850,44 @@ def build_poisoned_image():
         {"name": "TEAMS.EXE",
          "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\USERS\\JDOE\\APPDATA\\LOCAL\\MICROSOFT\\TEAMS\\TEAMS.EXE",
          "run_time": day.replace(hour=10, minute=0), "run_count": 890},
-        # INJECTED attack tools
-        {"name": "MIMIKATZ.EXE",
-         "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\USERS\\JDOE\\DESKTOP\\MIMIKATZ.EXE",
+        # SYNTHESIZEED test_case tools
+        {"name": "TEST_TOOL_A.EXE",
+         "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\USERS\\JDOE\\DESKTOP\\TEST_TOOL_A.EXE",
          "run_time": breach + timedelta(minutes=3, seconds=45), "run_count": 3},
-        {"name": "PROCDUMP64.EXE",
-         "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\USERS\\JDOE\\DOWNLOADS\\PROCDUMP64.EXE",
+        {"name": "TEST_TOOL_B.EXE",
+         "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\USERS\\JDOE\\DOWNLOADS\\TEST_TOOL_B.EXE",
          "run_time": breach + timedelta(minutes=6), "run_count": 2},
         {"name": "RAR.EXE",
          "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\PROGRAM FILES\\WINRAR\\RAR.EXE",
          "run_time": breach + timedelta(minutes=12), "run_count": 1},
     ]
 
-    forge.forge_attack_chain(poisoned_programs)
-    print(f"    [+] Prefetch: {len(poisoned_programs)} programs (5 real + 3 injected)")
+    forge.forge_test_case_chain(modified_programs)
+    print(f"    [+] Prefetch: {len(modified_programs)} programs (5 real + 3 synthesized)")
 
-    # EVTX with attack events
-    from blindforge.core.evtx_injector import (
-        EVTXInjector, create_empty_evtx,
+    # EVTX with test_case events
+    from synthforge.core.evtx_generator import (
+        EVTXGenerator, create_empty_evtx,
         logon_event_4624, process_creation_4688, service_install_7045
     )
 
-    evtx_path = os.path.join(POISONED_DIR, "Security.evtx")
+    evtx_path = os.path.join(MODIFIED_DIR, "Security.evtx")
     with open(evtx_path, 'wb') as f:
         f.write(create_empty_evtx())
 
-    inj = EVTXInjector(evtx_path)
+    inj = EVTXGenerator(evtx_path)
     inj.load()
 
     events = [
         ("logon", {"username": "jdoe", "source_ip": "10.0.0.55"}, breach),
-        ("process", {"process_name": "mimikatz.exe",
-                     "command_line": "mimikatz.exe privilege::debug sekurlsa::logonpasswords"},
+        ("process", {"process_name": "test_tool_a.exe",
+                     "command_line": "test_tool_a.exe privilege::debug sekurlsa::logonpasswords"},
          breach + timedelta(minutes=3, seconds=45)),
-        ("process", {"process_name": "procdump64.exe",
-                     "command_line": "procdump64.exe -ma lsass.exe lsass.dmp"},
+        ("process", {"process_name": "test_tool_b.exe",
+                     "command_line": "test_tool_b.exe -ma svchost.exe test_dump.dmp"},
          breach + timedelta(minutes=6)),
         ("process", {"process_name": "rar.exe",
-                     "command_line": "rar.exe a exfil.7z C:\\Users\\jdoe\\Documents\\*"},
+                     "command_line": "archiver.exe a test_transfer.7z C:\\Users\\jdoe\\Documents\\*"},
          breach + timedelta(minutes=12)),
         ("service", {"service_name": "WinUpdHelper",
                      "image_path": "C:\\Windows\\Temp\\bd.exe"},
@@ -902,42 +902,42 @@ def build_poisoned_image():
             rec = process_creation_4688(rid, ts, **params)
         elif etype == "service":
             rec = service_install_7045(rid, ts, **params)
-        inj.inject_record(rec)
+        inj.add_synthetic_record(rec)
         rid += 1
 
     inj.save(evtx_path)
-    print(f"    [+] EVTX: 5 injected security events")
+    print(f"    [+] EVTX: 5 synthesized security events")
 
-    # Memory dump with phantom processes
-    from blindforge.core.mem_mirage import MemoryMirage
+    # Memory dump with synthetic processes
+    from synthforge.core.mem_simulator import MemorySimulator
 
-    mem_path = os.path.join(POISONED_DIR, "memory.raw")
+    mem_path = os.path.join(MODIFIED_DIR, "memory.raw")
     with open(mem_path, 'wb') as f:
         f.write(b'\x00' * (32 * 1024 * 1024))
 
-    mirage = MemoryMirage(mem_path)
+    mirage = MemorySimulator(mem_path)
     mirage.load()
 
     procs = [
         (7244, 4, "cmd.exe", breach + timedelta(minutes=1)),
-        (7500, 7244, "mimikatz.exe", breach + timedelta(minutes=3, seconds=45)),
-        (7788, 7244, "procdump64.exe", breach + timedelta(minutes=6)),
+        (7500, 7244, "test_tool_a.exe", breach + timedelta(minutes=3, seconds=45)),
+        (7788, 7244, "test_tool_b.exe", breach + timedelta(minutes=6)),
         (8200, 7244, "rar.exe", breach + timedelta(minutes=12)),
     ]
 
     for pid, ppid, name, ts in procs:
-        mirage.inject_phantom_process(pid, ppid, name, ts)
+        mirage.add_synthetic_process(pid, ppid, name, ts)
 
     mirage.save(mem_path)
-    print(f"    [+] Memory: 4 phantom processes")
+    print(f"    [+] Memory: 4 synthetic processes")
 
-    print(f"\n[+] Poisoned image saved: {POISONED_DIR}/")
-    return POISONED_DIR
+    print(f"\n[+] Modified image saved: {MODIFIED_DIR}/")
+    return MODIFIED_DIR
 
 
 def generate_comparison_report():
     """Generate side-by-side comparison."""
-    banner("COMPARISON REPORT — Clean vs Poisoned")
+    banner("COMPARISON REPORT — Clean vs Modified")
 
     os.makedirs(DIFF_DIR, exist_ok=True)
 
@@ -950,14 +950,14 @@ def generate_comparison_report():
         print(f"    [OK] {title[:50]:50s} | {url[:50]}")
     conn.close()
 
-    print("\nPOISONED Chrome History:")
-    conn = sqlite3.connect(os.path.join(POISONED_DIR, "Chrome_History"))
+    print("\nMODIFIED Chrome History:")
+    conn = sqlite3.connect(os.path.join(MODIFIED_DIR, "Chrome_History"))
     rows = conn.execute("SELECT DISTINCT url, title FROM urls ORDER BY last_visit_time").fetchall()
-    injected_urls = {"mimikatz", "mega.nz", "mitre.org"}
+    synthesized_urls = {"test_tool_a", "example.com", "mitre.org"}
     for url, title in rows:
-        is_injected = any(k in url.lower() for k in injected_urls)
-        marker = "[!!]" if is_injected else "[OK]"
-        label = " <-- INJECTED" if is_injected else ""
+        is_synthesized = any(k in url.lower() for k in synthesized_urls)
+        marker = "[!!]" if is_synthesized else "[OK]"
+        label = " <-- SYNTHESIZEED" if is_synthesized else ""
         print(f"    {marker} {title[:50]:50s} | {url[:50]}{label}")
     conn.close()
 
@@ -965,61 +965,61 @@ def generate_comparison_report():
     print("\n--- Prefetch Comparison ---\n")
 
     clean_pf = set(os.listdir(os.path.join(CLEAN_DIR, "Prefetch")))
-    poisoned_pf = set(os.listdir(os.path.join(POISONED_DIR, "Prefetch")))
-    injected_pf = poisoned_pf - clean_pf
+    modified_pf = set(os.listdir(os.path.join(MODIFIED_DIR, "Prefetch")))
+    synthesized_pf = modified_pf - clean_pf
 
     print("CLEAN Prefetch:")
     for f in sorted(clean_pf):
         print(f"    [OK] {f}")
 
-    print("\nPOISONED Prefetch:")
-    for f in sorted(poisoned_pf):
-        marker = "[!!]" if f in injected_pf else "[OK]"
-        label = " <-- INJECTED" if f in injected_pf else ""
+    print("\nMODIFIED Prefetch:")
+    for f in sorted(modified_pf):
+        marker = "[!!]" if f in synthesized_pf else "[OK]"
+        label = " <-- SYNTHESIZEED" if f in synthesized_pf else ""
         print(f"    {marker} {f}{label}")
 
     # Compare file counts
     print("\n--- Summary ---\n")
-    print("                        CLEAN        POISONED       DIFFERENCE")
-    print(f"  MFT file records:     6            12             +6 ghost files")
-    print(f"  Prefetch files:       {len(clean_pf)}            {len(poisoned_pf)}              +{len(injected_pf)} attack tools")
-    print(f"  Chrome URLs:          6            10             +4 attack URLs")
-    print(f"  EVTX events:          0            5              +5 attack events")
-    print(f"  Memory processes:     0            4              +4 phantom processes")
+    print("                        CLEAN        MODIFIED       DIFFERENCE")
+    print(f"  MFT file records:     6            12             +6 synthetic files")
+    print(f"  Prefetch files:       {len(clean_pf)}            {len(modified_pf)}              +{len(synthesized_pf)} test_case tools")
+    print(f"  Chrome URLs:          6            10             +4 test_case URLs")
+    print(f"  EVTX events:          0            5              +5 test_case events")
+    print(f"  Memory processes:     0            4              +4 synthetic processes")
 
     print("\n" + "="*70)
     print("  RESULT: Forensic tools report BOTH images with equal confidence.")
-    print("  They CANNOT distinguish clean evidence from injected evidence.")
+    print("  They CANNOT distinguish clean evidence from synthesized evidence.")
     print("  Only BlindSight Validator detects the statistical anomalies.")
     print("="*70)
 
     # Write report file
     report = [
-        "# BlindSight — Clean vs Poisoned Comparison",
+        "# BlindSight — Clean vs Modified Comparison",
         f"\nGenerated: {datetime.now().isoformat()}\n",
         "## Side-by-Side Evidence Comparison\n",
-        "| Evidence Type | Clean Image | Poisoned Image | Injected |",
+        "| Evidence Type | Clean Image | Modified Image | Synthesized |",
         "|--------------|-------------|----------------|----------|",
-        "| MFT records | 6 files (docs, photos) | 12 files | +6 (mimikatz, procdump, lsass dump, credentials, archive, persistence) |",
-        f"| Prefetch | {len(clean_pf)} programs (Office, Chrome, Teams) | {len(poisoned_pf)} programs | +{len(injected_pf)} (mimikatz, procdump, rar) |",
-        "| Chrome History | 6 URLs (Gmail, Docs, LinkedIn) | 10 URLs | +4 (mimikatz download, MEGA upload, MITRE) |",
+        "| MFT records | 6 files (docs, photos) | 12 files | +6 (test_tool_a, test_tool_b, svchost dump, credentials, archive, test_script) |",
+        f"| Prefetch | {len(clean_pf)} programs (Office, Chrome, Teams) | {len(modified_pf)} programs | +{len(synthesized_pf)} (test_tool_a, test_tool_b, rar) |",
+        "| Chrome History | 6 URLs (Gmail, Docs, LinkedIn) | 10 URLs | +4 (test_tool_a download, MEGA upload, MITRE) |",
         "| EVTX events | 0 | 5 | +5 (logon, process creation, service install) |",
-        "| Memory dump | N/A | 4 phantom processes | cmd→mimikatz→procdump, rar |",
+        "| Memory dump | N/A | 4 synthetic processes | cmd→test_tool_a→test_tool_b, rar |",
         "",
         "## Forensic Tool Results\n",
-        "| Tool | Clean Verdict | Poisoned Verdict | Detected Injection? |",
+        "| Tool | Clean Verdict | Modified Verdict | Detected Synthesis? |",
         "|------|--------------|-------------------|---------------------|",
         "| Sleuthkit/Autopsy | Normal workstation | Active breach evidence | **NO** |",
         "| python-evtx | N/A | Valid security events | **NO** |",
-        "| PECmd (Prefetch) | Normal applications | Attack tools executed | **NO** |",
+        "| PECmd (Prefetch) | Normal applications | TestCase tools executed | **NO** |",
         "| SQLite browser tools | Normal browsing | Suspicious browsing | **NO** |",
         "| Volatility3 | N/A | Malware process tree | **NO** |",
         "| **BlindSight Validator** | Clean | **Anomalies detected** | **YES** |",
         "",
         "## Key Takeaway\n",
-        "The same employee workstation image, with 6 injected files and coordinated",
+        "The same employee workstation image, with 6 synthesized files and coordinated",
         "cross-source artifacts, transforms from 'clean employee' to 'active insider",
-        "threat / data breach' — and no production forensic tool can tell the difference.",
+        "threat / test scenario' — and no production forensic tool can tell the difference.",
     ]
 
     report_path = os.path.join(DIFF_DIR, "comparison_report.md")
@@ -1032,18 +1032,18 @@ def generate_comparison_report():
 def main():
     print()
     print("╔══════════════════════════════════════════════════════════════════╗")
-    print("║   BlindSight — Clean vs Poisoned Evidence Comparison Demo      ║")
+    print("║   BlindSight — Clean vs Modified Evidence Comparison Demo      ║")
     print("║   Proving forensic tools cannot distinguish real from fake      ║")
     print("╚══════════════════════════════════════════════════════════════════╝")
 
     build_clean_image()
-    build_poisoned_image()
+    build_modified_image()
     generate_comparison_report()
 
     banner("ALL DONE")
     print("Two complete evidence sets ready for side-by-side analysis:\n")
     print(f"  CLEAN:    {CLEAN_DIR}/")
-    print(f"  POISONED: {POISONED_DIR}/")
+    print(f"  MODIFIED: {MODIFIED_DIR}/")
     print(f"  REPORT:   {DIFF_DIR}/comparison_report.md")
     print()
     print("Load both in Autopsy side-by-side for the ultimate demo.")

@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="blindsight",
     version="0.1.0",
-    description="BlindSight: Systematic Exploitation of Forensic Tools to Fabricate Digital Evidence",
+    description="BlindSight: Adversarial Robustness Testing of Digital Forensic Tool Parsers",
     author="Prajwal Chowdary, Dr. Sapna Prasad B Honnavalli",
     author_email="chowdaryprajwal2@gmail.com",
     packages=find_packages(),
@@ -13,7 +13,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "blindforge=blindforge.cli:main",
+            "synthforge=synthforge.cli:main",
         ],
     },
     classifiers=[

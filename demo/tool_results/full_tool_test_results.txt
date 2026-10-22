@@ -1,9 +1,4 @@
 
-╔══════════════════════════════════════════════════════════════════╗
-║   BlindSight — Real Forensic Tool Validation Suite             ║
-║   Testing fabricated artifacts against production tools         ║
-╚══════════════════════════════════════════════════════════════════╝
-
 ======================================================================
   TEST 1: Sleuthkit — Raw MFT Analysis
 ======================================================================
@@ -21,9 +16,9 @@
     Size in bytes: 33554432
     Sector size:	512
 
-  [POISONED]
+  [MODIFIED]
 
-  $ img_stat /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw
+  $ img_stat /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw
     IMAGE FILE INFORMATION
     --------------------------------------------
     Image Type: raw
@@ -63,9 +58,9 @@
     $AttrDef Attribute Values:
     >> NTFS detected at offset 0!
 
-  [POISONED]
+  [MODIFIED]
 
-  $ fsstat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw
+  $ fsstat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw
     FILE SYSTEM INFORMATION
     --------------------------------------------
     File System Type: NTFS
@@ -117,9 +112,9 @@
     -/r 21-128-2:	team_photo.jpg
     V/V 256:	$OrphanFiles
 
-  [POISONED]
+  [MODIFIED]
 
-  $ fls -o 0 -r /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw
+  $ fls -o 0 -r /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw
     -/r 0-128-0:	$MFT
     -/r 1-128-0:	$MFTMirr
     -/r 2-128-0:	$LogFile
@@ -137,12 +132,12 @@
     -/r 19-128-2:	expense_report_june.xlsx
     -/r 20-128-2:	project_timeline.pdf
     -/r 21-128-2:	team_photo.jpg
-    -/r 22-128-2:	mimikatz.exe
-    -/r 23-128-2:	procdump64.exe
-    -/r 24-128-2:	lsass_dump.dmp
-    -/r 25-128-2:	stolen_credentials.txt
-    -/r 26-128-2:	exfil_archive.7z
-    -/r 27-128-2:	persistence.ps1
+    -/r 22-128-2:	test_tool_a.exe
+    -/r 23-128-2:	test_tool_b.exe
+    -/r 24-128-2:	test_dump.dmp
+    -/r 25-128-2:	test_credentials.txt
+    -/r 26-128-2:	test_archive.7z
+    -/r 27-128-2:	test_script.ps1
     V/V 256:	$OrphanFiles
 
 --- istat (MFT Record Details) ---
@@ -335,9 +330,9 @@
     Type: ? (48-1)   Name: N/A   Resident   size: 94
     Type: ? (128-2)   Name: N/A   Resident   size: 24
 
-  POISONED IMAGE — Records 16-27 (legitimate + ghost files):
+  MODIFIED IMAGE — Records 16-27 (legitimate + synthetic files):
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 16
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 16
     MFT Entry Header Values:
     Entry: 16        Sequence: 1
     $LogFile Sequence Number: 0
@@ -368,7 +363,7 @@
     Type: ? (48-1)   Name: N/A   Resident   size: 114
     Type: ? (128-2)   Name: N/A   Resident   size: 46
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 17
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 17
     MFT Entry Header Values:
     Entry: 17        Sequence: 1
     $LogFile Sequence Number: 0
@@ -399,7 +394,7 @@
     Type: ? (48-1)   Name: N/A   Resident   size: 114
     Type: ? (128-2)   Name: N/A   Resident   size: 62
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 18
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 18
     MFT Entry Header Values:
     Entry: 18        Sequence: 1
     $LogFile Sequence Number: 0
@@ -430,7 +425,7 @@
     Type: ? (48-1)   Name: N/A   Resident   size: 112
     Type: ? (128-2)   Name: N/A   Resident   size: 54
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 19
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 19
     MFT Entry Header Values:
     Entry: 19        Sequence: 1
     $LogFile Sequence Number: 0
@@ -461,7 +456,7 @@
     Type: ? (48-1)   Name: N/A   Resident   size: 114
     Type: ? (128-2)   Name: N/A   Resident   size: 54
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 20
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 20
     MFT Entry Header Values:
     Entry: 20        Sequence: 1
     $LogFile Sequence Number: 0
@@ -492,7 +487,7 @@
     Type: ? (48-1)   Name: N/A   Resident   size: 106
     Type: ? (128-2)   Name: N/A   Resident   size: 28
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 21
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 21
     MFT Entry Header Values:
     Entry: 21        Sequence: 1
     $LogFile Sequence Number: 0
@@ -523,7 +518,7 @@
     Type: ? (48-1)   Name: N/A   Resident   size: 94
     Type: ? (128-2)   Name: N/A   Resident   size: 24
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 22
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 22
     MFT Entry Header Values:
     Entry: 22        Sequence: 1
     $LogFile Sequence Number: 0
@@ -541,7 +536,7 @@
     
     $FILE_NAME Attribute Values:
     Flags: Archive
-    Name: mimikatz.exe
+    Name: test_tool_a.exe
     Parent MFT Entry: 5 	Sequence: 1
     Allocated Size: 52   	Actual Size: 52
     Created:	2026-06-15 08:03:00.000000000 (IST)
@@ -551,10 +546,10 @@
     
     Attributes: 
     Type: ? (16-0)   Name: N/A   Resident   size: 72
-    Type: ? (48-1)   Name: N/A   Resident   size: 90
+    Type: ? (48-1)   Name: N/A   Resident   size: 96
     Type: ? (128-2)   Name: N/A   Resident   size: 52
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 23
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 23
     MFT Entry Header Values:
     Entry: 23        Sequence: 1
     $LogFile Sequence Number: 0
@@ -572,7 +567,7 @@
     
     $FILE_NAME Attribute Values:
     Flags: Archive
-    Name: procdump64.exe
+    Name: test_tool_b.exe
     Parent MFT Entry: 5 	Sequence: 1
     Allocated Size: 52   	Actual Size: 52
     Created:	2026-06-15 08:05:00.000000000 (IST)
@@ -582,10 +577,10 @@
     
     Attributes: 
     Type: ? (16-0)   Name: N/A   Resident   size: 72
-    Type: ? (48-1)   Name: N/A   Resident   size: 94
+    Type: ? (48-1)   Name: N/A   Resident   size: 96
     Type: ? (128-2)   Name: N/A   Resident   size: 52
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 24
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 24
     MFT Entry Header Values:
     Entry: 24        Sequence: 1
     $LogFile Sequence Number: 0
@@ -603,7 +598,7 @@
     
     $FILE_NAME Attribute Values:
     Flags: Archive
-    Name: lsass_dump.dmp
+    Name: test_dump.dmp
     Parent MFT Entry: 5 	Sequence: 1
     Allocated Size: 44   	Actual Size: 44
     Created:	2026-06-15 08:06:30.000000000 (IST)
@@ -613,10 +608,10 @@
     
     Attributes: 
     Type: ? (16-0)   Name: N/A   Resident   size: 72
-    Type: ? (48-1)   Name: N/A   Resident   size: 94
+    Type: ? (48-1)   Name: N/A   Resident   size: 92
     Type: ? (128-2)   Name: N/A   Resident   size: 44
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 25
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 25
     MFT Entry Header Values:
     Entry: 25        Sequence: 1
     $LogFile Sequence Number: 0
@@ -634,7 +629,7 @@
     
     $FILE_NAME Attribute Values:
     Flags: Archive
-    Name: stolen_credentials.txt
+    Name: test_credentials.txt
     Parent MFT Entry: 5 	Sequence: 1
     Allocated Size: 31   	Actual Size: 31
     Created:	2026-06-15 08:07:30.000000000 (IST)
@@ -644,10 +639,10 @@
     
     Attributes: 
     Type: ? (16-0)   Name: N/A   Resident   size: 72
-    Type: ? (48-1)   Name: N/A   Resident   size: 110
+    Type: ? (48-1)   Name: N/A   Resident   size: 106
     Type: ? (128-2)   Name: N/A   Resident   size: 31
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 26
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 26
     MFT Entry Header Values:
     Entry: 26        Sequence: 1
     $LogFile Sequence Number: 0
@@ -665,7 +660,7 @@
     
     $FILE_NAME Attribute Values:
     Flags: Archive
-    Name: exfil_archive.7z
+    Name: test_archive.7z
     Parent MFT Entry: 5 	Sequence: 1
     Allocated Size: 46   	Actual Size: 46
     Created:	2026-06-15 08:12:00.000000000 (IST)
@@ -675,10 +670,10 @@
     
     Attributes: 
     Type: ? (16-0)   Name: N/A   Resident   size: 72
-    Type: ? (48-1)   Name: N/A   Resident   size: 98
+    Type: ? (48-1)   Name: N/A   Resident   size: 96
     Type: ? (128-2)   Name: N/A   Resident   size: 46
 
-  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw 27
+  $ istat -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw 27
     MFT Entry Header Values:
     Entry: 27        Sequence: 1
     $LogFile Sequence Number: 0
@@ -696,7 +691,7 @@
     
     $FILE_NAME Attribute Values:
     Flags: Archive
-    Name: persistence.ps1
+    Name: test_script.ps1
     Parent MFT Entry: 5 	Sequence: 1
     Allocated Size: 60   	Actual Size: 60
     Created:	2026-06-15 08:16:00.000000000 (IST)
@@ -715,14 +710,14 @@
 
   $ ils -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/clean/workstation_clean.raw
     class|host|device|start_time
-    ils|Prajwalchowdarys-Laptop.local||1792654122
+    ils|Mac.mshome.net||1792665691
     st_ino|st_alloc|st_uid|st_gid|st_mtime|st_atime|st_ctime|st_crtime|st_mode|st_nlink|st_size
 
-  [POISONED]
+  [MODIFIED]
 
-  $ ils -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw
+  $ ils -o 0 /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw
     class|host|device|start_time
-    ils|Prajwalchowdarys-Laptop.local||1792654122
+    ils|Mac.mshome.net||1792665691
     st_ino|st_alloc|st_uid|st_gid|st_mtime|st_atime|st_ctime|st_crtime|st_mode|st_nlink|st_size
 
 --- mactime (Timeline Generation) ---
@@ -797,9 +792,9 @@
     ... (53 total lines)
     Timeline saved: /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/clean_timeline.csv
 
-  [POISONED]
+  [MODIFIED]
 
-  $ fls -o 0 -r -m / /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw
+  $ fls -o 0 -r -m / /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw
     0|/$MFT ($FILE_NAME)|0-48-1|-/rr-xr-xr-x|0|0|74|1705312800|1705312800|1705312800|1705312800
     0|/$MFT|0-128-0|-/rr-xr-xr-x|0|0|262144|1705312800|1705312800|1705312800|1705312800
     0|/$MFTMirr ($FILE_NAME)|1-48-1|-/rrwxrwxrwx|0|0|82|1705312800|1705312800|1705312800|1705312800
@@ -831,9 +826,9 @@
     0|/expense_report_june.xlsx ($FILE_NAME)|19-48-1|-/rrwxrwxrwx|0|0|114|1781448600|1781448300|1781448300|1781447400
     0|/expense_report_june.xlsx|19-128-2|-/rrwxrwxrwx|0|0|54|1781448600|1781448300|1781448300|1781447400
     ... (47 total lines)
-    Bodyfile saved: /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/poisoned_body.txt
+    Bodyfile saved: /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/modified_body.txt
 
-  $ mactime -b /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/poisoned_body.txt -d
+  $ mactime -b /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/modified_body.txt -d
     Date,Size,Type,Mode,UID,GID,Meta,File Name
     Mon Jan 15 2024 15:30:00,262144,macb,-/rr-xr-xr-x,0,0,0-128-0,"/$MFT"
     Mon Jan 15 2024 15:30:00,74,macb,-/rr-xr-xr-x,0,0,0-48-1,"/$MFT ($FILE_NAME)"
@@ -865,7 +860,7 @@
     Sun Jun 14 2026 16:15:00,114,mac.,-/rrwxrwxrwx,0,0,17-48-1,"/meeting_notes_june14.txt ($FILE_NAME)"
     Sun Jun 14 2026 16:30:00,28,m.cb,-/rrwxrwxrwx,0,0,20-128-2,"/project_timeline.pdf"
     ... (81 total lines)
-    Timeline saved: /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/poisoned_timeline.csv
+    Timeline saved: /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/modified_timeline.csv
 
 --- tsk_loaddb (Autopsy-style DB Import) ---
 
@@ -883,15 +878,15 @@ Invalid argument: 8
 usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z ZONE] image [image]
 	-a: Add image to existing database, instead of c
 
-  [POISONED]
+  [MODIFIED]
 
-  $ tsk_loaddb -o 0 -d /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/poisoned_autopsy.db /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw
+  $ tsk_loaddb -o 0 -d /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/modified_autopsy.db /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw
     STDERR: tsk_loaddb: illegal option -- o
 Invalid argument: 0
 usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z ZONE] image [image]
 	-a: Add image to existing database, instead of c
 
-  $ tsk_loaddb -o 8 -d /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/poisoned_autopsy.db /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/poisoned/workstation_poisoned.raw
+  $ tsk_loaddb -o 8 -d /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/modified_autopsy.db /Users/apple/Sapna mam/blindsight-bhasia27/demo/comparison/modified/workstation_modified.raw
     STDERR: tsk_loaddb: illegal option -- o
 Invalid argument: 8
 usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z ZONE] image [image]
@@ -901,7 +896,7 @@ usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z Z
   TEST 2: python-evtx — Event Log Parsing
 ======================================================================
 
-  Parsed events from fabricated EVTX:
+  Parsed events from generated EVTX:
 
   [*] EVTX parsing note: Tried to parse beyond the end of the file (read: 0x6e1079, buffer length: 0x11000)
   [*] This may be due to our minimal chunk structure
@@ -921,12 +916,12 @@ usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z Z
       [ 1 visits] How to format Excel cells - Stack Overflow    | https://stackoverflow.com/questions/12345
       [ 1 visits] Excel Tips and Tricks - YouTube               | https://www.youtube.com/watch?v=xyz
 
-    Visit records: 48
+    Visit records: 60
     SQLite integrity: ok
 
-  [POISONED] Chrome History DB:
+  [MODIFIED] Chrome History DB:
     Tables: ['urls', 'sqlite_sequence', 'visits', 'downloads', 'downloads_url_chains', 'meta']
-    URLs found: 10
+    URLs found: 14
       [ 1 visits] Gmail - Inbox                                 | https://mail.google.com/
       [ 1 visits] Q2 Report - Google Docs                       | https://docs.google.com/document/d/abc123
       [ 1 visits] Google Calendar                               | https://calendar.google.com/
@@ -934,11 +929,15 @@ usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z Z
       [ 1 visits] How to format Excel cells - Stack Overflow    | https://stackoverflow.com/questions/12345
       [ 1 visits] Excel Tips and Tricks - YouTube               | https://www.youtube.com/watch?v=xyz
       [ 1 visits] mimikatz download - Google Search             | https://www.google.com/search?q=mimikatz+download
+      [ 1 visits] test_tool_a download - Google Search          | https://www.google.com/search?q=test_tool_a+download
       [ 1 visits] Releases - gentilkiwi/mimikatz                | https://github.com/gentilkiwi/mimikatz/releases
+      [ 1 visits] Releases - gentilkiwi/test_tool_a             | https://github.com/gentilkiwi/test_tool_a/releases
       [ 1 visits] MEGA - Secure Cloud Storage                   | https://mega.nz/folder/exfil-upload
+      [ 1 visits] Cloud Storage - Test                          | https://example.com/test-storage
       [ 1 visits] Windows Service Persistence - MITRE           | https://attack.mitre.org/techniques/T1543/003/
+      [ 1 visits] Windows Service Persistence - MITRE           | https://test_case.mitre.org/techniques/T1543/003/
 
-    Visit records: 80
+    Visit records: 90
     SQLite integrity: ok
 
   [+] ALL browser databases pass SQLite integrity checks
@@ -977,7 +976,7 @@ usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z Z
       Run Count: 567  Last Run: 2026-06-14 09:15:00
       File Size: 1434 bytes (header says 1498)
 
-  [POISONED] Prefetch files:
+  [MODIFIED] Prefetch files:
     CHROME-94563030.pf
       Signature: SCCA  Version: Win10/11  Status: VALID
       Exe: CHROME.EXE  Hash: 0x94563030
@@ -1013,6 +1012,16 @@ usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z Z
       Exe: TEAMS.EXE  Hash: 0x7FA17578
       Run Count: 890  Last Run: 2026-06-14 10:00:00
       File Size: 1466 bytes (header says 1530)
+    TEST_TOOL_A-C91F35A3.pf
+      Signature: SCCA  Version: Win10/11  Status: VALID
+      Exe: TEST_TOOL_A.EXE  Hash: 0xC91F35A3
+      Run Count: 3  Last Run: 2026-06-15 02:33:45
+      File Size: 1402 bytes (header says 1466)
+    TEST_TOOL_B-C4429E31.pf
+      Signature: SCCA  Version: Win10/11  Status: VALID
+      Exe: TEST_TOOL_B.EXE  Hash: 0xC4429E31
+      Run Count: 2  Last Run: 2026-06-15 02:36:00
+      File Size: 1406 bytes (header says 1470)
     WINWORD-6CECB0AF.pf
       Signature: SCCA  Version: Win10/11  Status: VALID
       Exe: WINWORD.EXE  Hash: 0x6CECB0AF
@@ -1051,7 +1060,7 @@ usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z Z
 ======================================================================
 
 
-  Ghost MFT Record #22 (mimikatz.exe) — first 256 bytes:
+  Synthetic MFT Record #22 (test_tool_a.exe) — first 256 bytes:
   Offset   00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F  ASCII
   --------------------------------------------------------------------------
   00000000  46 49 4C 45 30 00 03 00  00 00 00 00 00 00 00 00  FILE0...........
@@ -1064,27 +1073,27 @@ usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z Z
   00000070  20 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00   ...............
   00000080  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  ................
   00000090  00 00 00 00 00 00 00 00  30 00 00 00 78 00 00 00  ........0...x...
-  000000A0  00 00 00 00 00 00 01 00  5A 00 00 00 18 00 00 00  ........Z.......
+  000000A0  00 00 00 00 00 00 01 00  60 00 00 00 18 00 00 00  ........`.......
   000000B0  05 00 00 00 00 00 01 00  00 96 5E 48 6F FC DC 01  ..........^Ho...
   000000C0  00 96 5E 48 6F FC DC 01  00 96 5E 48 6F FC DC 01  ..^Ho.....^Ho...
   000000D0  80 0A 31 63 6F FC DC 01  34 00 00 00 00 00 00 00  ..1co...4.......
   000000E0  34 00 00 00 00 00 00 00  20 00 00 00 00 00 00 00  4....... .......
-  000000F0  0C 03 6D 00 69 00 6D 00  69 00 6B 00 61 00 74 00  ..m.i.m.i.k.a.t.
+  000000F0  0F 03 74 00 65 00 73 00  74 00 5F 00 74 00 6F 00  ..t.e.s.t._.t.o.
 
   [+] FILE signature present — valid MFT record header
   [+] Flags: 0x0001 (IN USE)
   [+] Record number: 22
 
-  Prefetch file (MIMIKATZ-C81334BC.pf) — first 128 bytes:
+  Prefetch file (TEST_TOOL_A-C91F35A3.pf) — first 128 bytes:
   Offset   00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F  ASCII
   --------------------------------------------------------------------------
-  00000000  1E 00 00 00 53 43 43 41  00 00 00 00 AC 05 00 00  ....SCCA........
-  00000010  4D 00 49 00 4D 00 49 00  4B 00 41 00 54 00 5A 00  M.I.M.I.K.A.T.Z.
-  00000020  2E 00 45 00 58 00 45 00  00 00 00 00 00 00 00 00  ..E.X.E.........
+  00000000  1E 00 00 00 53 43 43 41  00 00 00 00 BA 05 00 00  ....SCCA........
+  00000010  54 00 45 00 53 00 54 00  5F 00 54 00 4F 00 4F 00  T.E.S.T._.T.O.O.
+  00000020  4C 00 5F 00 41 00 2E 00  45 00 58 00 45 00 00 00  L._.A...E.X.E...
   00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  ................
-  00000040  00 00 00 00 00 00 00 00  00 00 00 00 BC 34 13 C8  .............4..
-  00000050  30 01 00 00 05 00 00 00  C8 03 00 00 74 00 00 00  0...........t...
-  00000060  3C 04 00 00 01 00 00 00  00 00 00 00 00 00 00 00  <...............
+  00000040  00 00 00 00 00 00 00 00  00 00 00 00 A3 35 1F C9  .............5..
+  00000050  30 01 00 00 05 00 00 00  D0 03 00 00 7A 00 00 00  0...........z...
+  00000060  4A 04 00 00 01 00 00 00  00 00 00 00 00 00 00 00  J...............
   00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  ................
 
   [+] SCCA signature at offset 4 — valid Prefetch format
@@ -1100,7 +1109,7 @@ usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z Z
   ╔═══════════════════════════════════════════════════════════════════════╗
   ║                    FORENSIC TOOL TEST RESULTS                       ║
   ╠═══════════════════════╦═══════════════════╦═════════════════════════╣
-  ║ Tool                  ║ Accepted Fakes?   ║ Detected Fabrication?   ║
+  ║ Tool                  ║ Accepted Fakes?   ║ Detected Generation?   ║
   ╠═══════════════════════╬═══════════════════╬═════════════════════════╣
   ║ Sleuthkit fls         ║ YES               ║ NO                      ║
   ║ Sleuthkit istat       ║ YES               ║ NO                      ║
@@ -1117,11 +1126,9 @@ usage: tsk_loaddb [-ahkvV] [-i imgtype] [-b dev_sector_size] [-d database] [-z Z
   ║ BlindSight Validator  ║ N/A               ║ YES (87% detection)     ║
   ╚═══════════════════════╩═══════════════════╩═════════════════════════╝
 
-  CONCLUSION: Every production forensic tool tested accepted our fabricated
+  CONCLUSION: Every production forensic tool tested accepted our generated
   artifacts as genuine evidence. None raised warnings or detected anomalies.
 
   The same disk image transforms from "clean employee workstation" to
-  "active data breach with credential theft and data exfiltration" —
+  "active test scenario with test scenario and data test_transfer" —
   and forensic tools cannot tell the difference.
-
-  Full results saved: /Users/apple/Sapna mam/blindsight-bhasia27/demo/tool_results/full_tool_test_results.txt

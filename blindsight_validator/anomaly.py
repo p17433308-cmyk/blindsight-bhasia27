@@ -80,7 +80,7 @@ class TimestampAnomalyDetector:
                     f"{exact_second}/{len(sub_second)} timestamps "
                     f"({ratio:.0%}) have zero sub-second precision. "
                     f"Real NTFS timestamps have ~100ns precision from "
-                    f"system clock; fabricated timestamps from Python's "
+                    f"system clock; generated timestamps from Python's "
                     f"datetime often lack sub-second components."
                 ),
                 evidence={"exact_second_count": exact_second, "total": len(sub_second)},
@@ -105,7 +105,7 @@ class TimestampAnomalyDetector:
         self, timestamps: list[int], artifact_type: str, path: str
     ) -> None:
         """Real file activity has irregular intervals.
-        Fabricated timestamps may have suspiciously regular spacing."""
+        Generated timestamps may have suspiciously regular spacing."""
         sorted_ts = sorted(timestamps)
         intervals = [sorted_ts[i + 1] - sorted_ts[i] for i in range(len(sorted_ts) - 1)]
 
@@ -176,7 +176,7 @@ class TimestampAnomalyDetector:
                             f"{len(cluster)}/{len(timestamps)} timestamps "
                             f"cluster within {span:.0f} seconds "
                             f"({start.strftime('%H:%M')}-{end.strftime('%H:%M')}). "
-                            f"Bulk fabrication often produces tight temporal clusters."
+                            f"Bulk generation often produces tight temporal clusters."
                         ),
                         evidence={
                             "cluster_size": len(cluster),
@@ -205,7 +205,7 @@ class TimestampAnomalyDetector:
                     f"{off_hours}/{len(timestamps)} ({ratio:.0%}) timestamps "
                     f"fall outside business hours (UTC). Consider timezone "
                     f"context, but high off-hours ratios may indicate "
-                    f"fabrication using UTC without locale adjustment."
+                    f"generation using UTC without locale adjustment."
                 ),
                 evidence={"off_hours": off_hours, "total": len(timestamps)},
             ))

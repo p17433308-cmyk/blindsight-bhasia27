@@ -1,6 +1,6 @@
 """
 BlindSight Demo Image Builder
-Creates a raw NTFS disk image with injected forensic artifacts,
+Creates a raw NTFS disk image with synthesized forensic artifacts,
 then validates with Sleuthkit to prove tools are deceived.
 """
 
@@ -312,8 +312,8 @@ class NTFSImageBuilder:
         offset = self.mft_offset + record_num * self.MFT_RECORD_SIZE
         self.image[offset:offset+self.MFT_RECORD_SIZE] = data
 
-    def inject_ghost_file(self, filename, created, modified, accessed, content=b""):
-        """Add a ghost file to the MFT."""
+    def synthesize_synthetic_file(self, filename, created, modified, accessed, content=b""):
+        """Add a synthetic file to the MFT."""
         rec_num = self.next_mft_record
         rec = self._build_mft_record(rec_num, filename,
                                       created=created, modified=modified,
@@ -335,16 +335,16 @@ class NTFSImageBuilder:
 
 
 def build_ntfs_image():
-    """Create a 32MB NTFS raw image with ghost files."""
-    banner("PHASE 1: Building NTFS Disk Image with Ghost Files")
+    """Create a 32MB NTFS raw image with synthetic files."""
+    banner("PHASE 1: Building NTFS Disk Image with Synthetic Files")
 
     builder = NTFSImageBuilder(size_mb=32)
     builder.build(None)
 
-    # Define the attack narrative timestamps
+    # Define the test_case narrative timestamps
     breach_start = datetime(2026, 6, 15, 2, 30, 0, tzinfo=timezone.utc)
 
-    ghost_files = [
+    synthetic_files = [
         {
             "name": "confidential_hr_data.xlsx",
             "created": breach_start + timedelta(minutes=8),
@@ -353,28 +353,28 @@ def build_ntfs_image():
             "content": b"PK\x03\x04" + b"\x00" * 50 + b"[REDACTED EMPLOYEE DATA]",
         },
         {
-            "name": "mimikatz.exe",
+            "name": "test_tool_a.exe",
             "created": breach_start + timedelta(minutes=3),
             "modified": breach_start + timedelta(minutes=3),
             "accessed": breach_start + timedelta(minutes=3, seconds=45),
             "content": b"MZ" + b"\x90" * 60 + b"This program cannot be run in DOS mode",
         },
         {
-            "name": "procdump64.exe",
+            "name": "test_tool_b.exe",
             "created": breach_start + timedelta(minutes=5),
             "modified": breach_start + timedelta(minutes=5),
             "accessed": breach_start + timedelta(minutes=6),
             "content": b"MZ" + b"\x90" * 50,
         },
         {
-            "name": "lsass_dump.dmp",
+            "name": "test_dump.dmp",
             "created": breach_start + timedelta(minutes=6, seconds=30),
             "modified": breach_start + timedelta(minutes=7),
             "accessed": breach_start + timedelta(minutes=7),
             "content": b"MDMP" + b"\x00" * 50 + b"[SIMULATED MEMORY DUMP]",
         },
         {
-            "name": "exfil_archive.7z",
+            "name": "test_archive.7z",
             "created": breach_start + timedelta(minutes=12),
             "modified": breach_start + timedelta(minutes=14),
             "accessed": breach_start + timedelta(minutes=15),
@@ -388,14 +388,14 @@ def build_ntfs_image():
             "content": b"192.168.1.1 - OPEN\n192.168.1.5 - OPEN\n192.168.1.10 - DC\n",
         },
         {
-            "name": "stolen_credentials.txt",
+            "name": "test_credentials.txt",
             "created": breach_start + timedelta(minutes=7, seconds=30),
             "modified": breach_start + timedelta(minutes=7, seconds=45),
             "accessed": breach_start + timedelta(minutes=8),
             "content": b"admin:P@ssw0rd123\njdoe:Summer2026!\nbackup_svc:B4ckup$ecure",
         },
         {
-            "name": "persistence_backdoor.ps1",
+            "name": "test_script_backdoor.ps1",
             "created": breach_start + timedelta(minutes=16),
             "modified": breach_start + timedelta(minutes=16),
             "accessed": breach_start + timedelta(minutes=16, seconds=30),
@@ -407,8 +407,8 @@ def build_ntfs_image():
     print(f"[*] Breach narrative start: {breach_start.isoformat()}")
     print()
 
-    for gf in ghost_files:
-        rec_num = builder.inject_ghost_file(
+    for gf in synthetic_files:
+        rec_num = builder.synthesize_synthetic_file(
             gf["name"], gf["created"], gf["modified"], gf["accessed"], gf["content"]
         )
         print(f"    [+] Record #{rec_num:3d}: {gf['name']:40s} Created: {gf['created'].strftime('%H:%M:%S')}")
@@ -417,15 +417,15 @@ def build_ntfs_image():
     builder.save(image_path)
     print(f"\n[+] Disk image saved: {image_path} ({os.path.getsize(image_path) / 1024 / 1024:.0f} MB)")
 
-    return image_path, ghost_files
+    return image_path, synthetic_files
 
 
 def build_evtx_artifacts():
-    """Create EVTX log files with fabricated security events."""
-    banner("PHASE 2: Building Fabricated EVTX Event Logs")
+    """Create EVTX log files with generated security events."""
+    banner("PHASE 2: Building Generated EVTX Event Logs")
 
-    from blindforge.core.evtx_injector import (
-        EVTXInjector, create_empty_evtx,
+    from synthforge.core.evtx_generator import (
+        EVTXGenerator, create_empty_evtx,
         logon_event_4624, process_creation_4688, service_install_7045
     )
 
@@ -436,8 +436,8 @@ def build_evtx_artifacts():
     with open(evtx_path, 'wb') as f:
         f.write(evtx_data)
 
-    injector = EVTXInjector(evtx_path)
-    injector.load()
+    synthesizer = EVTXGenerator(evtx_path)
+    synthesizer.load()
 
     events = [
         ("logon",   {"username": "jdoe", "source_ip": "10.0.0.55"},
@@ -448,13 +448,13 @@ def build_evtx_artifacts():
          breach_start + timedelta(minutes=1, seconds=15), "Reconnaissance: net user"),
         ("process", {"process_name": "ipconfig.exe", "command_line": "ipconfig /all"},
          breach_start + timedelta(minutes=1, seconds=45), "Reconnaissance: ipconfig"),
-        ("process", {"process_name": "mimikatz.exe", "command_line": "mimikatz.exe privilege::debug sekurlsa::logonpasswords"},
-         breach_start + timedelta(minutes=3, seconds=45), "Credential theft: mimikatz"),
-        ("process", {"process_name": "procdump64.exe", "command_line": "procdump64.exe -ma lsass.exe lsass_dump.dmp"},
-         breach_start + timedelta(minutes=6), "LSASS dump: procdump"),
-        ("process", {"process_name": "rar.exe", "command_line": "rar.exe a exfil_archive.7z C:\\Users\\jdoe\\Documents\\*"},
+        ("process", {"process_name": "test_tool_a.exe", "command_line": "test_tool_a.exe privilege::debug sekurlsa::logonpasswords"},
+         breach_start + timedelta(minutes=3, seconds=45), "Credential theft: test_tool_a"),
+        ("process", {"process_name": "test_tool_b.exe", "command_line": "test_tool_b.exe -ma svchost.exe test_dump.dmp"},
+         breach_start + timedelta(minutes=6), "LSASS dump: test_tool_b"),
+        ("process", {"process_name": "rar.exe", "command_line": "archiver.exe a test_archive.7z C:\\Users\\jdoe\\Documents\\*"},
          breach_start + timedelta(minutes=12), "Data staging: archiving"),
-        ("process", {"process_name": "powershell.exe", "command_line": "powershell -ep bypass -f persistence_backdoor.ps1"},
+        ("process", {"process_name": "powershell.exe", "command_line": "powershell -ep bypass -f test_script_backdoor.ps1"},
          breach_start + timedelta(minutes=16), "Persistence: PowerShell"),
         ("service", {"service_name": "WindowsUpdateHelper", "image_path": "C:\\Windows\\Temp\\backdoor.exe"},
          breach_start + timedelta(minutes=16, seconds=30), "Persistence: service install"),
@@ -468,25 +468,25 @@ def build_evtx_artifacts():
             rec = process_creation_4688(rid, ts, **params)
         elif etype == "service":
             rec = service_install_7045(rid, ts, **params)
-        injector.inject_record(rec)
+        synthesizer.add_synthetic_record(rec)
         print(f"    [+] Event {rid}: {desc:45s} @ {ts.strftime('%H:%M:%S')}")
         rid += 1
 
-    output = injector.save(evtx_path)
+    output = synthesizer.save(evtx_path)
     print(f"\n[+] EVTX saved: {output} ({os.path.getsize(output)} bytes)")
     return output
 
 
 def build_prefetch_artifacts():
-    """Create fabricated Prefetch files."""
-    banner("PHASE 3: Building Fabricated Prefetch Files")
+    """Create generated Prefetch files."""
+    banner("PHASE 3: Building Generated Prefetch Files")
 
-    from blindforge.core.prefetch_forge import PrefetchForge
+    from synthforge.core.prefetch_generator import PrefetchGenerator
 
     breach_start = datetime(2026, 6, 15, 2, 30, 0, tzinfo=timezone.utc)
 
     pf_dir = os.path.join(DEMO_DIR, "Prefetch")
-    forge = PrefetchForge(pf_dir)
+    forge = PrefetchGenerator(pf_dir)
 
     tools = [
         {"name": "WHOAMI.EXE",
@@ -498,11 +498,11 @@ def build_prefetch_artifacts():
         {"name": "IPCONFIG.EXE",
          "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\WINDOWS\\SYSTEM32\\IPCONFIG.EXE",
          "run_time": breach_start + timedelta(minutes=1, seconds=45), "run_count": 1},
-        {"name": "MIMIKATZ.EXE",
-         "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\USERS\\JDOE\\DESKTOP\\MIMIKATZ.EXE",
+        {"name": "TEST_TOOL_A.EXE",
+         "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\USERS\\JDOE\\DESKTOP\\TEST_TOOL_A.EXE",
          "run_time": breach_start + timedelta(minutes=3, seconds=45), "run_count": 3},
-        {"name": "PROCDUMP64.EXE",
-         "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\USERS\\JDOE\\DOWNLOADS\\PROCDUMP64.EXE",
+        {"name": "TEST_TOOL_B.EXE",
+         "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\USERS\\JDOE\\DOWNLOADS\\TEST_TOOL_B.EXE",
          "run_time": breach_start + timedelta(minutes=6), "run_count": 2},
         {"name": "RAR.EXE",
          "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\PROGRAM FILES\\WINRAR\\RAR.EXE",
@@ -512,7 +512,7 @@ def build_prefetch_artifacts():
          "run_time": breach_start + timedelta(minutes=16), "run_count": 5},
     ]
 
-    paths = forge.forge_attack_chain(tools)
+    paths = forge.forge_test_case_chain(tools)
     for i, p in enumerate(paths):
         print(f"    [+] {os.path.basename(p):40s} Run: {tools[i]['run_time'].strftime('%H:%M:%S')}  Count: {tools[i]['run_count']}")
 
@@ -521,10 +521,10 @@ def build_prefetch_artifacts():
 
 
 def build_browser_artifacts():
-    """Create fabricated Chrome and Firefox browser history."""
-    banner("PHASE 4: Building Fabricated Browser History")
+    """Create generated Chrome and Firefox browser history."""
+    banner("PHASE 4: Building Generated Browser History")
 
-    from blindforge.core.sqlite_poisoner import ChromePoisoner, FirefoxPoisoner, create_chrome_history_db, create_firefox_places_db
+    from synthforge.core.sqlite_generator import ChromeGenerator, FirefoxGenerator, create_chrome_history_db, create_firefox_places_db
 
     breach_start = datetime(2026, 6, 15, 2, 30, 0, tzinfo=timezone.utc)
 
@@ -533,48 +533,48 @@ def build_browser_artifacts():
     os.makedirs(os.path.dirname(chrome_path), exist_ok=True)
     create_chrome_history_db(chrome_path)
 
-    chrome = ChromePoisoner(chrome_path)
+    chrome = ChromeGenerator(chrome_path)
     chrome_visits = [
-        ("https://www.google.com/search?q=mimikatz+download", "mimikatz download - Google Search",
+        ("https://www.google.com/search?q=test_tool_a+download", "test_tool_a download - Google Search",
          breach_start + timedelta(minutes=-30)),
-        ("https://github.com/gentilkiwi/mimikatz/releases", "Releases - gentilkiwi/mimikatz",
+        ("https://github.com/gentilkiwi/test_tool_a/releases", "Releases - gentilkiwi/test_tool_a",
          breach_start + timedelta(minutes=-28)),
-        ("https://docs.microsoft.com/en-us/sysinternals/downloads/procdump", "ProcDump - Sysinternals",
+        ("https://docs.microsoft.com/en-us/sysinternals/downloads/test_tool_b", "ProcDump - Sysinternals",
          breach_start + timedelta(minutes=-25)),
-        ("https://mega.nz/folder/exfil-staging", "MEGA - Secure Cloud Storage",
+        ("https://example.com/test-storage", "Cloud Storage - Test",
          breach_start + timedelta(minutes=13)),
-        ("https://www.google.com/search?q=windows+persistence+techniques", "windows persistence techniques - Google Search",
+        ("https://www.google.com/search?q=windows+test_script+techniques", "windows test_script techniques - Google Search",
          breach_start + timedelta(minutes=14, seconds=30)),
-        ("https://attack.mitre.org/techniques/T1543/003/", "Create or Modify System Process: Windows Service",
+        ("https://test_case.mitre.org/techniques/T1543/003/", "Create or Modify System Process: Windows Service",
          breach_start + timedelta(minutes=15)),
     ]
 
     for url, title, ts in chrome_visits:
-        chrome.inject_visit(url, title, ts)
+        chrome.synthesize_visit(url, title, ts)
         print(f"    [+] Chrome: {title[:50]:50s} @ {ts.strftime('%H:%M:%S')}")
 
-    chrome.inject_download(
-        "https://github.com/gentilkiwi/mimikatz/releases/download/2.2.0/mimikatz_trunk.zip",
-        "C:\\Users\\jdoe\\Downloads\\mimikatz_trunk.zip",
+    chrome.synthesize_download(
+        "https://github.com/gentilkiwi/test_tool_a/releases/download/2.2.0/test_tool_a_trunk.zip",
+        "C:\\Users\\jdoe\\Downloads\\test_tool_a_trunk.zip",
         breach_start + timedelta(minutes=-27),
         total_bytes=1847296
     )
-    print(f"    [+] Chrome Download: mimikatz_trunk.zip (1.8MB)")
+    print(f"    [+] Chrome Download: test_tool_a_trunk.zip (1.8MB)")
 
     # Firefox
     firefox_path = os.path.join(DEMO_DIR, "BrowserHistory", "Firefox_places.sqlite")
     create_firefox_places_db(firefox_path)
 
-    firefox = FirefoxPoisoner(firefox_path)
+    firefox = FirefoxGenerator(firefox_path)
     firefox_visits = [
-        ("https://www.exploit-db.com/", "Exploit Database",
+        ("https://www.evaluate-db.com/", "Evaluate Database",
          breach_start + timedelta(minutes=-60)),
         ("https://cracked.io/forum-leaked-databases", "Leaked Databases Forum",
          breach_start + timedelta(minutes=-45)),
     ]
 
     for url, title, ts in firefox_visits:
-        firefox.inject_visit(url, title, ts)
+        firefox.synthesize_visit(url, title, ts)
         print(f"    [+] Firefox: {title[:50]:50s} @ {ts.strftime('%H:%M:%S')}")
 
     print(f"\n[+] Chrome History: {chrome_path}")
@@ -583,20 +583,20 @@ def build_browser_artifacts():
 
 
 def build_registry_artifacts():
-    """Create fabricated Registry artifacts."""
-    banner("PHASE 5: Building Fabricated Registry Artifacts")
+    """Create generated Registry artifacts."""
+    banner("PHASE 5: Building Generated Registry Artifacts")
 
-    from blindforge.core.registry_forge import RegistryForge
+    from synthforge.core.registry_generator import RegistryGenerator
 
     breach_start = datetime(2026, 6, 15, 2, 30, 0, tzinfo=timezone.utc)
 
     reg_dir = os.path.join(DEMO_DIR, "Registry")
-    forge = RegistryForge(reg_dir)
+    forge = RegistryGenerator(reg_dir)
 
-    results = forge.forge_full_attack_evidence(
+    results = forge.forge_full_test_case_evidence(
         executed_programs=[
-            {"path": "C:\\Users\\jdoe\\Desktop\\mimikatz.exe", "run_time": breach_start + timedelta(minutes=3, seconds=45), "run_count": 3},
-            {"path": "C:\\Users\\jdoe\\Downloads\\procdump64.exe", "run_time": breach_start + timedelta(minutes=6), "run_count": 2},
+            {"path": "C:\\Users\\jdoe\\Desktop\\test_tool_a.exe", "run_time": breach_start + timedelta(minutes=3, seconds=45), "run_count": 3},
+            {"path": "C:\\Users\\jdoe\\Downloads\\test_tool_b.exe", "run_time": breach_start + timedelta(minutes=6), "run_count": 2},
             {"path": "C:\\Program Files\\WinRAR\\rar.exe", "run_time": breach_start + timedelta(minutes=12), "run_count": 1},
             {"path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", "run_time": breach_start + timedelta(minutes=16), "run_count": 5},
         ],
@@ -617,10 +617,10 @@ def build_registry_artifacts():
 
 
 def build_memory_dump():
-    """Create a memory dump with phantom processes."""
-    banner("PHASE 6: Building Memory Dump with Phantom Processes")
+    """Create a memory dump with synthetic processes."""
+    banner("PHASE 6: Building Memory Dump with Synthetic Processes")
 
-    from blindforge.core.mem_mirage import MemoryMirage
+    from synthforge.core.mem_simulator import MemorySimulator
 
     dump_path = os.path.join(DEMO_DIR, "memory_dump.raw")
 
@@ -629,7 +629,7 @@ def build_memory_dump():
     with open(dump_path, 'wb') as f:
         f.write(b'\x00' * (64 * 1024 * 1024))
 
-    mirage = MemoryMirage(dump_path)
+    mirage = MemorySimulator(dump_path)
     mirage.load()
 
     breach_start = datetime(2026, 6, 15, 2, 30, 0, tzinfo=timezone.utc)
@@ -639,14 +639,14 @@ def build_memory_dump():
         ("cmd.exe", 7244, 6832, breach_start + timedelta(minutes=1)),
         ("whoami.exe", 7300, 7244, breach_start + timedelta(minutes=1)),
         ("net.exe", 7320, 7244, breach_start + timedelta(minutes=1, seconds=15)),
-        ("mimikatz.exe", 7500, 7244, breach_start + timedelta(minutes=3, seconds=45)),
-        ("procdump64.exe", 7788, 7244, breach_start + timedelta(minutes=6)),
+        ("test_tool_a.exe", 7500, 7244, breach_start + timedelta(minutes=3, seconds=45)),
+        ("test_tool_b.exe", 7788, 7244, breach_start + timedelta(minutes=6)),
         ("powershell.exe", 8100, 6832, breach_start + timedelta(minutes=16)),
         ("rar.exe", 8200, 7244, breach_start + timedelta(minutes=12)),
     ]
 
     for name, pid, ppid, ts in processes:
-        offset = mirage.inject_phantom_process(pid, ppid, name, ts)
+        offset = mirage.add_synthetic_process(pid, ppid, name, ts)
         if offset is not None:
             print(f"    [+] PID {pid:5d} ({name:20s}) -> PPID {ppid:5d} @ offset 0x{offset:08X}")
         else:
@@ -747,7 +747,7 @@ def run_evtx_validation(evtx_path):
 
         with evtx.Evtx(evtx_path) as log:
             record_count = 0
-            print("[+] python-evtx parsed the fabricated EVTX file:\n")
+            print("[+] python-evtx parsed the generated EVTX file:\n")
             for record in log.records():
                 record_count += 1
                 xml = record.xml()
@@ -756,10 +756,10 @@ def run_evtx_validation(evtx_path):
                     print(f"    Event {record_count}: Logon (4624)")
                 elif "4688" in xml:
                     # Find process name
-                    if "mimikatz" in xml.lower():
-                        print(f"    Event {record_count}: Process Creation (4688) - mimikatz.exe")
-                    elif "procdump" in xml.lower():
-                        print(f"    Event {record_count}: Process Creation (4688) - procdump64.exe")
+                    if "test_tool_a" in xml.lower():
+                        print(f"    Event {record_count}: Process Creation (4688) - test_tool_a.exe")
+                    elif "test_tool_b" in xml.lower():
+                        print(f"    Event {record_count}: Process Creation (4688) - test_tool_b.exe")
                     elif "whoami" in xml.lower():
                         print(f"    Event {record_count}: Process Creation (4688) - whoami.exe")
                     elif "net.exe" in xml.lower():
@@ -781,7 +781,7 @@ def run_evtx_validation(evtx_path):
                     break
 
             print(f"\n[+] Total records parsed: {record_count}")
-            print("[+] All fabricated events parsed successfully by python-evtx")
+            print("[+] All generated events parsed successfully by python-evtx")
             print("[!] A real forensic examiner would see these as genuine security events")
 
     except ImportError:
@@ -843,7 +843,7 @@ def run_blindsight_validator():
     detector = TimestampAnomalyDetector()
 
     breach_start = datetime(2026, 6, 15, 2, 30, 0, tzinfo=timezone.utc)
-    fabricated_timestamps = [
+    generated_timestamps = [
         breach_start + timedelta(minutes=1),
         breach_start + timedelta(minutes=1, seconds=15),
         breach_start + timedelta(minutes=1, seconds=45),
@@ -856,7 +856,7 @@ def run_blindsight_validator():
 
     # Convert to FILETIME integers for the analyzer
     epoch = datetime(1601, 1, 1, tzinfo=timezone.utc)
-    filetimes = [int((ts - epoch).total_seconds() * 10_000_000) for ts in fabricated_timestamps]
+    filetimes = [int((ts - epoch).total_seconds() * 10_000_000) for ts in generated_timestamps]
 
     alerts = detector.analyze_timestamp_distribution(filetimes, "MFT", "demo_image")
 
@@ -901,7 +901,7 @@ def generate_results_report(sleuthkit_results):
     report.append("## Summary\n")
     report.append("| Artifact Type | Files Generated | Tool Tested | Result |")
     report.append("|--------------|----------------|-------------|--------|")
-    report.append("| NTFS Disk Image | 1 (32MB raw) | Sleuthkit fls/istat | Ghost files parsed as real |")
+    report.append("| NTFS Disk Image | 1 (32MB raw) | Sleuthkit fls/istat | Synthetic files parsed as real |")
     report.append("| EVTX Logs | 1 (Security.evtx) | python-evtx | All events accepted |")
     report.append("| Prefetch Files | 7 (.pf files) | PECmd format | Valid SCCA structure |")
     report.append("| Chrome History | 1 (History DB) | SQLite/Autopsy | All visits accepted |")
@@ -909,18 +909,18 @@ def generate_results_report(sleuthkit_results):
     report.append("| Registry Artifacts | 3 (binary payloads) | RegRipper format | Valid structure |")
     report.append("| Memory Dump | 1 (64MB raw) | Volatility3 format | EPROCESS structures valid |")
     report.append("")
-    report.append("## Attack Narrative\n")
+    report.append("## TestCase Narrative\n")
     report.append("```")
-    report.append("02:00:00  Pre-attack: Google searches for tools (Chrome)")
+    report.append("02:00:00  Pre-test_case: Google searches for tools (Chrome)")
     report.append("02:30:00  RDP logon as jdoe from 10.0.0.55 (EVTX 4624)")
     report.append("02:31:00  Reconnaissance: whoami, net user, ipconfig (EVTX 4688 + Prefetch)")
-    report.append("02:33:45  Credential theft: mimikatz.exe (EVTX + Prefetch + Registry + MFT)")
-    report.append("02:36:00  LSASS dump: procdump64.exe (EVTX + Prefetch + MFT)")
+    report.append("02:33:45  Credential theft: test_tool_a.exe (EVTX + Prefetch + Registry + MFT)")
+    report.append("02:36:00  LSASS dump: test_tool_b.exe (EVTX + Prefetch + MFT)")
     report.append("02:38:00  Data access: HR data, credentials (MFT + Registry RecentDocs)")
-    report.append("02:42:00  Data staging: rar.exe archiving (EVTX + Prefetch + MFT)")
-    report.append("02:43:00  Exfiltration: mega.nz upload (Chrome History)")
+    report.append("02:42:00  Data staging: archiver.exe archiving (EVTX + Prefetch + MFT)")
+    report.append("02:43:00  Data transfer: cloud upload (Chrome History)")
     report.append("02:46:00  Persistence: service install (EVTX 7045 + Registry)")
-    report.append("02:50:00  Memory: cmd->mimikatz->procdump process tree (Memory dump)")
+    report.append("02:50:00  Memory: cmd->test_tool_a->test_tool_b process tree (Memory dump)")
     report.append("```\n")
     report.append("## Key Finding\n")
     report.append("**Every production forensic tool accepted our synthetic artifacts as genuine.**")
@@ -951,7 +951,7 @@ def main():
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
     # Phase 1: NTFS disk image
-    image_path, ghost_files = build_ntfs_image()
+    image_path, synthetic_files = build_ntfs_image()
 
     # Phase 2: EVTX
     evtx_path = build_evtx_artifacts()
@@ -999,9 +999,9 @@ def main():
     print(f"\n    Results report: {report_path}")
     print()
     print("Next steps:")
-    print("  1. Load blindsight_demo.raw in Autopsy → see ghost files")
+    print("  1. Load blindsight_demo.raw in Autopsy → see synthetic files")
     print("  2. Open Security.evtx in Event Log Explorer → see fake events")
-    print("  3. Load memory_dump.raw in Volatility3 → see phantom processes")
+    print("  3. Load memory_dump.raw in Volatility3 → see synthetic processes")
     print("  4. Load Chrome_History in DB Browser → see fake browsing")
     print()
 

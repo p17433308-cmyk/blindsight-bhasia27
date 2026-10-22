@@ -1,8 +1,8 @@
 """
-BlindForge EVTX Injector — Inject fabricated Windows Event Log records.
+BlindForge EVTX Synthesizer — Synthesize generated Windows Event Log records.
 
 Generates structurally valid EVTX event records (logon 4624, process
-creation 4688, service install 7045, etc.) and injects them into raw
+creation 4688, service install 7045, etc.) and synthesizes them into raw
 .evtx files. Forensic tools parse them as legitimate security events.
 """
 
@@ -115,8 +115,8 @@ class EventRecord:
         return record
 
 
-class EVTXInjector:
-    """Inject fabricated event records into an EVTX file."""
+class EVTXGenerator:
+    """Synthesize generated event records into an EVTX file."""
 
     def __init__(self, evtx_path: str):
         self.evtx_path = evtx_path
@@ -147,7 +147,7 @@ class EVTXInjector:
             return 0
         return struct.unpack_from("<Q", self.data, 0x18)[0]
 
-    def find_injection_point(self) -> tuple[int, int]:
+    def find_synthesis_point(self) -> tuple[int, int]:
         """Find the last chunk with free space and the offset within it."""
         offset = 0x1000
         last_chunk_offset = offset
@@ -174,18 +174,18 @@ class EVTXInjector:
 
         return last_chunk_offset, scan
 
-    def inject_record(self, record: EventRecord) -> int:
-        chunk_offset, inject_offset = self.find_injection_point()
+    def add_synthetic_record(self, record: EventRecord) -> int:
+        chunk_offset, synthesize_offset = self.find_synthesis_point()
         record_bytes = record.to_record_bytes()
 
         chunk_end = chunk_offset + CHUNK_SIZE
-        if inject_offset + len(record_bytes) > chunk_end:
+        if synthesize_offset + len(record_bytes) > chunk_end:
             # Need a new chunk
             chunk_offset = len(self.data)
             self.data.extend(self._create_empty_chunk())
-            inject_offset = chunk_offset + 0x200
+            synthesize_offset = chunk_offset + 0x200
 
-        self.data[inject_offset:inject_offset + len(record_bytes)] = record_bytes
+        self.data[synthesize_offset:synthesize_offset + len(record_bytes)] = record_bytes
 
         # Update chunk header: record count and last record ID
         self._update_chunk_header(chunk_offset, record.record_id)
@@ -362,7 +362,7 @@ def create_empty_evtx(record_count_hint: int = 100) -> bytearray:
 if __name__ == "__main__":
     import tempfile
 
-    print("[BlindForge] EVTX Injector — Event Log Fabrication PoC")
+    print("[BlindForge] EVTX Synthesizer — Event Log Generation PoC")
     print("=" * 60)
 
     # Create test EVTX
@@ -371,11 +371,11 @@ if __name__ == "__main__":
     with open(evtx_path, "wb") as f:
         f.write(evtx_data)
 
-    injector = EVTXInjector(evtx_path)
-    injector.load()
-    print(f"[*] EVTX loaded: {injector.get_chunk_count()} chunks")
+    synthesizer = EVTXGenerator(evtx_path)
+    synthesizer.load()
+    print(f"[*] EVTX loaded: {synthesizer.get_chunk_count()} chunks")
 
-    # Inject an attack narrative: RDP logon → cmd execution → service install
+    # Synthesize an test_case narrative: RDP logon → cmd execution → service install
     events = [
         logon_event_4624(
             record_id=1,
@@ -406,14 +406,14 @@ if __name__ == "__main__":
     ]
 
     for event in events:
-        injector.inject_record(event)
+        synthesizer.add_synthetic_record(event)
 
-    output = injector.save(evtx_path + ".poisoned")
-    print(f"\n[+] Injected {len(events)} fabricated security events:")
+    output = synthesizer.save(evtx_path + ".modified")
+    print(f"\n[+] Synthesized {len(events)} generated security events:")
     print("    1. RDP Logon (4624) - jdoe from 10.0.0.55 at 02:30")
     print("    2. Process Creation (4688) - net user command at 02:31")
     print("    3. Process Creation (4688) - admin group add at 02:31")
     print("    4. Service Install (7045) - backdoor service at 02:32")
-    print(f"\n[+] Poisoned EVTX saved to: {output}")
+    print(f"\n[+] Modified EVTX saved to: {output}")
     print("[+] This tells a story of a breach that never happened.")
     print("\n[!] User 'jdoe' never logged in. No commands were run.")

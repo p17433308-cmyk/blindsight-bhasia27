@@ -1,6 +1,6 @@
 # BlindSight
 
-**Systematic Exploitation of Forensic Tools to Fabricate Digital Evidence**
+**Adversarial Robustness Testing of Digital Forensic Tool Parsers**
 
 > Prajwal Chowdary & Dr. Sapna Prasad B Honnavalli — PES University
 
@@ -8,9 +8,9 @@
 
 ## What Is This?
 
-BlindSight demonstrates that digital forensic tools can be systematically deceived into reporting fabricated evidence as genuine. We introduce five novel attack classes targeting the forensic toolchain itself — not to destroy or hide evidence, but to **make tools produce convincing false evidence**.
+BlindSight demonstrates that digital forensic tools can be systematically deceived into reporting synthetic evidence as genuine. We introduce five novel test classes targeting the forensic toolchain itself — not to destroy or hide evidence, but to evaluate whether tools can distinguish authentic artifacts from synthetically generated ones.
 
-A 2026 Systematization of Knowledge survey covering 123 anti-forensic papers found **zero** research on attacking forensic tools themselves. BlindSight fills that gap.
+A 2026 Systematization of Knowledge survey covering 123 anti-forensic papers found **zero** research on adversarial testing of forensic tools themselves. BlindSight fills that gap.
 
 ## Architecture
 
@@ -18,87 +18,78 @@ A 2026 Systematization of Knowledge survey covering 123 anti-forensic papers fou
 ┌─────────────────────────────────────────────────────────────┐
 │                    BlindSight Framework                      │
 ├───────────────────┬─────────────────┬───────────────────────┤
-│    BlindForge     │   DiffOracle    │  BlindSight Validator │
-│    (Offensive)    │   (Analysis)    │     (Defensive)       │
+│    SynthForge     │   DiffOracle    │  BlindSight Validator │
+│    (Red Team)     │   (Analysis)    │     (Blue Team)       │
 ├───────────────────┼─────────────────┼───────────────────────┤
-│ MFT Injector      │ Tool Harness    │ Integrity Checker     │
-│ EVTX Injector     │ Semantic Differ │ Anomaly Detector      │
-│ Prefetch Forge    │ Report Gen      │ Cross-Source Validator │
-│ SQLite Poisoner   │                 │ Validation Reports    │
-│ Registry Forge    │                 │                       │
-│ Timeline Warp     │                 │                       │
-│ Memory Mirage     │                 │                       │
+│ MFT Generator     │ Tool Harness    │ Integrity Checker     │
+│ EVTX Generator    │ Semantic Differ │ Anomaly Detector      │
+│ Prefetch Generator│ Report Gen      │ Cross-Source Validator │
+│ SQLite Generator  │                 │ Validation Reports    │
+│ Registry Generator│                 │                       │
+│ Timeline Synth.   │                 │                       │
+│ Memory Simulator  │                 │                       │
 └───────────────────┴─────────────────┴───────────────────────┘
 ```
 
-**Timeline Warp** orchestrates all modules — define one attack narrative and it generates consistent, corroborating artifacts across every source.
+**Timeline Synthesizer** orchestrates all modules — define one test narrative and it generates consistent, corroborating artifacts across every source.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full architecture and data flow diagrams.
 
-## Attack Classes
+## Test Classes
 
-| # | Attack | Description | Target Artifacts |
-|---|--------|-------------|-----------------|
+| # | Class | Description | Target Artifacts |
+|---|-------|-------------|-----------------|
 | 1 | **Parser Differentials** | Craft artifacts that different tools interpret contradictorily | MFT, EVTX, Registry |
-| 2 | **Ghost Injection** | Inject structurally valid records for activity that never occurred | MFT, EVTX, Prefetch, Registry, SQLite |
-| 3 | **Timeline Poisoning** | Cross-source timestamp manipulation corrupting timeline reconstruction | All artifact types |
-| 4 | **Memory Mirage** | Fabricated process structures in memory dumps | EPROCESS, VAD, Handle Tables |
-| 5 | **SQLite Phantom Records** | Injected browser history/downloads indistinguishable from genuine | Chrome, Firefox, Safari DBs |
+| 2 | **Record Synthesis** | Generate structurally valid records for activity that never occurred | MFT, EVTX, Prefetch, Registry, SQLite |
+| 3 | **Timeline Consistency** | Cross-source timestamp synthesis corrupting timeline reconstruction | All artifact types |
+| 4 | **Process Simulation** | Synthetic process structures in memory dumps | EPROCESS, VAD, Handle Tables |
+| 5 | **Database Records** | Synthetic browser history/downloads indistinguishable from genuine | Chrome, Firefox, Safari DBs |
 
 ## Project Structure
 
 ```
 blindsight-bhasia27/
-├── blindforge/                  # Offensive toolkit
+├── synthforge/                  # Red-team toolkit
 │   ├── core/
-│   │   ├── mft_injector.py          # NTFS MFT entry fabrication
-│   │   ├── evtx_injector.py         # Windows Event Log injection
-│   │   ├── prefetch_forge.py        # Prefetch file fabrication
-│   │   ├── registry_forge.py        # Registry artifact injection
-│   │   ├── sqlite_poisoner.py       # Browser history injection
-│   │   ├── timeline_warp.py         # Cross-source timeline poisoning
-│   │   └── mem_mirage.py            # Memory dump process injection
+│   │   ├── mft_generator.py         # NTFS MFT entry synthesis
+│   │   ├── evtx_generator.py        # Windows Event Log synthesis
+│   │   ├── prefetch_generator.py    # Prefetch file generation
+│   │   ├── registry_generator.py    # Registry artifact synthesis
+│   │   ├── sqlite_generator.py      # Browser history synthesis
+│   │   ├── timeline_synthesizer.py  # Cross-source timeline synthesis
+│   │   └── mem_simulator.py         # Memory dump process simulation
 │   └── cli.py                       # Command-line interface
 ├── difforacle/                  # Parser differential finder
 │   ├── harness.py                   # Multi-tool execution harness
 │   ├── differ.py                    # Semantic output comparison
 │   └── report.py                    # Differential reports
-├── blindsight_validator/        # Defensive tool
+├── blindsight_validator/        # Blue-team defensive tool
 │   ├── integrity.py                 # Cross-tool validation
 │   ├── anomaly.py                   # Structural anomaly detection
 │   └── report.py                    # Validation reports
+├── demo/                        # Demo suite with real tool validation
 ├── docs/
 │   └── ARCHITECTURE.md              # Architecture & data flow
-├── cfp/
-│   └── submission.md                # Conference submission
-└── datasets/
-    └── manifests/                   # Benchmark ground truth
+└── cfp/
+    └── submission.md                # Conference submission
 ```
 
 ## Quick Start
 
 ```bash
 # Clone
-git clone https://github.com/prajwalchowdary2/blindsight-bhasia27.git
+git clone https://github.com/prajwalchowdary5/blindsight-bhasia27.git
 cd blindsight-bhasia27
 
 # Install
 pip install -e .
 
-# Generate a complete fabricated attack narrative
-blindforge narrative --user jdoe --computer WORKSTATION-01 \
+# Generate a complete synthetic test narrative
+synthforge narrative --user jdoe --computer WORKSTATION-01 \
     --source-ip 10.0.0.55 --output ./demo_output
 
-# Inject a ghost file into an MFT
-blindforge mft --mft raw_mft.bin --filename "stolen_data.xlsx" \
-    --timestamp "2026-06-15T14:30:00+00:00"
-
-# Inject a logon event into EVTX
-blindforge evtx --evtx Security.evtx --event-type logon \
-    --username admin --source-ip 192.168.1.100
-
 # Validate evidence integrity
-blindforge validate --mft suspicious_mft.bin --evtx suspicious.evtx
+synthforge validate --mft suspicious_mft.bin --evtx suspicious.evtx
 ```
 
 ## Individual Module PoCs
@@ -106,19 +97,19 @@ blindforge validate --mft suspicious_mft.bin --evtx suspicious.evtx
 Each module runs standalone:
 
 ```bash
-python -m blindforge.core.mft_injector
-python -m blindforge.core.evtx_injector
-python -m blindforge.core.prefetch_forge
-python -m blindforge.core.sqlite_poisoner
-python -m blindforge.core.registry_forge
-python -m blindforge.core.timeline_warp
-python -m blindforge.core.mem_mirage
+python -m synthforge.core.mft_generator
+python -m synthforge.core.evtx_generator
+python -m synthforge.core.prefetch_generator
+python -m synthforge.core.sqlite_generator
+python -m synthforge.core.registry_generator
+python -m synthforge.core.timeline_synthesizer
+python -m synthforge.core.mem_simulator
 ```
 
 ## Targeted Forensic Tools
 
-| Tool | Version Tested | Attack Surface |
-|------|---------------|----------------|
+| Tool | Version Tested | Evaluation Surface |
+|------|---------------|-------------------|
 | Autopsy / Sleuthkit | 4.21+ | MFT parsing, timeline, file carving |
 | Volatility3 | 2.5+ | EPROCESS scanning, pool tag analysis |
 | Plaso / log2timeline | 20240+ | Multi-source timeline reconstruction |
@@ -133,13 +124,13 @@ python -m blindforge.core.mem_mirage
 
 ## Legal
 
-This tool is provided for **authorized security research and forensic tool testing only**. Do not use it to fabricate evidence in actual investigations or legal proceedings. The authors are not responsible for misuse.
+This tool is provided for **authorized security research and forensic tool testing only**. Do not use it to tamper with evidence in actual investigations or legal proceedings. The authors are not responsible for misuse.
 
 ## Citation
 
 ```bibtex
 @misc{chowdary2027blindsight,
-  title={BlindSight: Weaponizing Parser Differentials to Fabricate Forensic Evidence},
+  title={BlindSight: Adversarial Robustness Testing of Digital Forensic Tool Parsers},
   author={Chowdary, Prajwal and Honnavalli, Sapna Prasad B},
   year={2027}
 }

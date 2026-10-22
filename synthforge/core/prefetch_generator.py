@@ -1,5 +1,5 @@
 """
-BlindForge Prefetch Forge — Fabricate Windows Prefetch files.
+BlindForge Prefetch Forge — Generate Windows Prefetch files.
 
 Generates valid Windows 10/11 Prefetch (.pf) files for executables that
 were never run. Forensic tools (PECmd, Autopsy, etc.) parse these as
@@ -199,8 +199,8 @@ class PrefetchFile:
         return path
 
 
-class PrefetchForge:
-    """High-level interface for fabricating prefetch files."""
+class PrefetchGenerator:
+    """High-level interface for generating prefetch files."""
 
     def __init__(self, output_dir: str):
         self.output_dir = output_dir
@@ -240,11 +240,11 @@ class PrefetchForge:
 
         return pf.save(self.output_dir)
 
-    def forge_attack_chain(
+    def forge_test_case_chain(
         self,
         tools: list[dict],
     ) -> list[str]:
-        """Forge prefetch files for a sequence of attacker tools.
+        """Forge prefetch files for a sequence of test_caseer tools.
 
         Each dict: {"name": str, "path": str, "run_time": datetime,
                      "run_count": int}
@@ -264,17 +264,17 @@ class PrefetchForge:
 if __name__ == "__main__":
     import tempfile
 
-    print("[BlindForge] Prefetch Forge — Program Execution Fabrication PoC")
+    print("[BlindForge] Prefetch Forge — Program Execution Generation PoC")
     print("=" * 60)
 
-    output_dir = os.path.join(tempfile.gettempdir(), "prefetch_forge")
-    forge = PrefetchForge(output_dir)
+    output_dir = os.path.join(tempfile.gettempdir(), "prefetch_generator")
+    forge = PrefetchGenerator(output_dir)
 
-    # Fabricate evidence of attacker tools being executed
-    attack_tools = [
+    # Generate evidence of test_caseer tools being executed
+    test_case_tools = [
         {
-            "name": "MIMIKATZ.EXE",
-            "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\USERS\\ADMIN\\DESKTOP\\MIMIKATZ.EXE",
+            "name": "TEST_TOOL_A.EXE",
+            "path": "\\VOLUME{01d7a8b9c0d1e2f3}\\USERS\\ADMIN\\DESKTOP\\TEST_TOOL_A.EXE",
             "run_time": datetime(2026, 6, 15, 2, 33, 0, tzinfo=timezone.utc),
             "run_count": 3,
         },
@@ -298,14 +298,14 @@ if __name__ == "__main__":
         },
     ]
 
-    paths = forge.forge_attack_chain(attack_tools)
+    paths = forge.forge_test_case_chain(test_case_tools)
 
-    print(f"\n[+] Fabricated {len(paths)} prefetch files:")
+    print(f"\n[+] Generated {len(paths)} prefetch files:")
     for i, p in enumerate(paths):
         print(f"    {os.path.basename(p)}")
-        print(f"      Tool: {attack_tools[i]['name']}")
-        print(f"      Last Run: {attack_tools[i]['run_time']}")
-        print(f"      Run Count: {attack_tools[i]['run_count']}")
+        print(f"      Tool: {test_case_tools[i]['name']}")
+        print(f"      Last Run: {test_case_tools[i]['run_time']}")
+        print(f"      Run Count: {test_case_tools[i]['run_count']}")
 
     print(f"\n[+] Output directory: {output_dir}")
     print("[+] Drop these into C:\\Windows\\Prefetch on a disk image")

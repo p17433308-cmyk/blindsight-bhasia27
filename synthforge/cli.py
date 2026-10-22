@@ -1,5 +1,5 @@
 """
-BlindForge CLI — Command-line interface for forensic artifact fabrication.
+BlindForge CLI — Command-line interface for forensic artifact generation.
 """
 
 import argparse
@@ -9,8 +9,8 @@ import tempfile
 from datetime import datetime, timezone
 
 
-def cmd_inject_mft(args):
-    from .core.mft_injector import MFTInjector, create_empty_mft
+def cmd_synthesize_mft(args):
+    from .core.mft_generator import MFTGenerator, create_empty_mft
 
     if args.create_test:
         mft_data = create_empty_mft(args.record_count or 256)
@@ -19,12 +19,12 @@ def cmd_inject_mft(args):
         print(f"[+] Created test MFT: {args.output}")
         return
 
-    injector = MFTInjector(args.mft)
-    injector.load()
+    synthesizer = MFTGenerator(args.mft)
+    synthesizer.load()
 
     ts = datetime.fromisoformat(args.timestamp) if args.timestamp else datetime.now(timezone.utc)
 
-    rec = injector.inject_ghost_file(
+    rec = synthesizer.synthesize_synthetic_file(
         filename=args.filename,
         created=ts,
         modified=ts,
@@ -32,14 +32,14 @@ def cmd_inject_mft(args):
         content=args.content.encode() if args.content else b"",
     )
 
-    output = injector.save(args.output or args.mft + ".poisoned")
-    print(f"[+] Injected '{args.filename}' as record #{rec}")
+    output = synthesizer.save(args.output or args.mft + ".modified")
+    print(f"[+] Synthesized '{args.filename}' as record #{rec}")
     print(f"[+] Saved to: {output}")
 
 
-def cmd_inject_evtx(args):
-    from .core.evtx_injector import (
-        EVTXInjector, create_empty_evtx,
+def cmd_synthesize_evtx(args):
+    from .core.evtx_generator import (
+        EVTXGenerator, create_empty_evtx,
         logon_event_4624, process_creation_4688, service_install_7045,
     )
 
@@ -50,11 +50,11 @@ def cmd_inject_evtx(args):
         print(f"[+] Created test EVTX: {args.output}")
         return
 
-    injector = EVTXInjector(args.evtx)
-    injector.load()
+    synthesizer = EVTXGenerator(args.evtx)
+    synthesizer.load()
 
     ts = datetime.fromisoformat(args.timestamp) if args.timestamp else datetime.now(timezone.utc)
-    rid = injector.get_last_record_id()
+    rid = synthesizer.get_last_record_id()
 
     if args.event_type == "logon":
         rec = logon_event_4624(rid, ts, username=args.username or "admin",
@@ -69,14 +69,14 @@ def cmd_inject_evtx(args):
         print(f"[-] Unknown event type: {args.event_type}")
         return
 
-    injector.inject_record(rec)
-    output = injector.save(args.output or args.evtx + ".poisoned")
-    print(f"[+] Injected {args.event_type} event (ID {rid})")
+    synthesizer.add_synthetic_record(rec)
+    output = synthesizer.save(args.output or args.evtx + ".modified")
+    print(f"[+] Synthesized {args.event_type} event (ID {rid})")
     print(f"[+] Saved to: {output}")
 
 
 def cmd_narrative(args):
-    from .core.timeline_warp import TimelineWarp, build_data_breach_narrative
+    from .core.timeline_synthesizer import TimelineSynthesizer, build_data_breach_narrative
 
     ts = datetime.fromisoformat(args.start_time) if args.start_time else None
     narrative = build_data_breach_narrative(
@@ -86,8 +86,8 @@ def cmd_narrative(args):
         start_time=ts,
     )
 
-    output_dir = args.output or os.path.join(tempfile.gettempdir(), "blindforge_narrative")
-    warp = TimelineWarp(output_dir)
+    output_dir = args.output or os.path.join(tempfile.gettempdir(), "synthforge_narrative")
+    warp = TimelineSynthesizer(output_dir)
 
     print(f"[*] Building narrative: {narrative.name}")
     results = warp.materialize(narrative)
@@ -128,24 +128,24 @@ def cmd_validate(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="blindforge",
-        description="BlindForge — Forensic Artifact Fabrication Toolkit",
+        prog="synthforge",
+        description="BlindForge — Forensic Artifact Generation Toolkit",
     )
     subparsers = parser.add_subparsers(dest="command")
 
-    # MFT injection
-    mft_parser = subparsers.add_parser("mft", help="Inject ghost files into MFT")
+    # MFT synthesis
+    mft_parser = subparsers.add_parser("mft", help="Synthesize synthetic files into MFT")
     mft_parser.add_argument("--mft", help="Path to raw MFT file")
-    mft_parser.add_argument("--filename", help="Ghost filename to inject")
+    mft_parser.add_argument("--filename", help="Synthetic filename to synthesize")
     mft_parser.add_argument("--timestamp", help="ISO timestamp for the file")
     mft_parser.add_argument("--content", help="File content (small, resident)")
     mft_parser.add_argument("--output", "-o", help="Output path")
     mft_parser.add_argument("--create-test", action="store_true", help="Create test MFT")
     mft_parser.add_argument("--record-count", type=int, help="Records for test MFT")
-    mft_parser.set_defaults(func=cmd_inject_mft)
+    mft_parser.set_defaults(func=cmd_synthesize_mft)
 
-    # EVTX injection
-    evtx_parser = subparsers.add_parser("evtx", help="Inject events into EVTX")
+    # EVTX synthesis
+    evtx_parser = subparsers.add_parser("evtx", help="Synthesize events into EVTX")
     evtx_parser.add_argument("--evtx", help="Path to EVTX file")
     evtx_parser.add_argument("--event-type", choices=["logon", "process", "service"])
     evtx_parser.add_argument("--timestamp", help="ISO timestamp")
@@ -157,13 +157,13 @@ def main():
     evtx_parser.add_argument("--image-path", help="Service image path for 7045")
     evtx_parser.add_argument("--output", "-o", help="Output path")
     evtx_parser.add_argument("--create-test", action="store_true")
-    evtx_parser.set_defaults(func=cmd_inject_evtx)
+    evtx_parser.set_defaults(func=cmd_synthesize_evtx)
 
     # Full narrative
-    narr_parser = subparsers.add_parser("narrative", help="Generate full attack narrative")
+    narr_parser = subparsers.add_parser("narrative", help="Generate full test_case narrative")
     narr_parser.add_argument("--user", help="Target username")
     narr_parser.add_argument("--computer", help="Target computer name")
-    narr_parser.add_argument("--source-ip", help="Attacker source IP")
+    narr_parser.add_argument("--source-ip", help="TestCaseer source IP")
     narr_parser.add_argument("--start-time", help="ISO start timestamp")
     narr_parser.add_argument("--output", "-o", help="Output directory")
     narr_parser.set_defaults(func=cmd_narrative)

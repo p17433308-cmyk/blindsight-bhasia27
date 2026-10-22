@@ -1,8 +1,8 @@
 """
-BlindForge Timeline Warp — Cross-source timeline poisoning orchestrator.
+BlindForge Timeline Warp — Cross-source timeline generateing orchestrator.
 
-Coordinates injection across MFT, EVTX, Prefetch, Registry, and SQLite
-to build a coherent but fabricated forensic narrative. Ensures timestamps
+Coordinates synthesis across MFT, EVTX, Prefetch, Registry, and SQLite
+to build a coherent but generated forensic narrative. Ensures timestamps
 are internally consistent across artifact types to survive timeline
 analysis tools like Plaso/log2timeline.
 """
@@ -12,22 +12,22 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from dataclasses import dataclass, field
 
-from .mft_injector import MFTInjector, MFTRecord
-from .evtx_injector import (
-    EVTXInjector,
+from .mft_generator import MFTGenerator, MFTRecord
+from .evtx_generator import (
+    EVTXGenerator,
     logon_event_4624,
     process_creation_4688,
     service_install_7045,
     create_empty_evtx,
 )
-from .prefetch_forge import PrefetchForge
-from .registry_forge import RegistryForge, UserAssistEntry, ShimCacheEntry
-from .sqlite_poisoner import ChromePoisoner, create_chrome_history_db
+from .prefetch_generator import PrefetchGenerator
+from .registry_generator import RegistryGenerator, UserAssistEntry, ShimCacheEntry
+from .sqlite_generator import ChromeGenerator, create_chrome_history_db
 
 
 @dataclass
 class TimelineEvent:
-    """A single event in the fabricated timeline."""
+    """A single event in the generated timeline."""
     timestamp: datetime
     event_type: str  # "logon", "process", "file_access", "download", "service"
     description: str
@@ -35,8 +35,8 @@ class TimelineEvent:
 
 
 @dataclass
-class AttackNarrative:
-    """A complete fabricated attack story with cross-source consistency."""
+class TestCaseNarrative:
+    """A complete generated test_case story with cross-source consistency."""
     name: str
     target_user: str
     target_computer: str
@@ -99,14 +99,14 @@ class AttackNarrative:
         return sorted(self.events, key=lambda e: e.timestamp)
 
 
-class TimelineWarp:
-    """Orchestrate cross-source artifact injection for a coherent narrative."""
+class TimelineSynthesizer:
+    """Orchestrate cross-source artifact synthesis for a coherent narrative."""
 
     def __init__(self, output_dir: str):
         self.output_dir = output_dir
         os.makedirs(output_dir, exist_ok=True)
 
-    def materialize(self, narrative: AttackNarrative) -> dict:
+    def materialize(self, narrative: TestCaseNarrative) -> dict:
         """Convert a narrative into actual forensic artifacts across all sources."""
         results = {}
         events = narrative.get_sorted_events()
@@ -116,8 +116,8 @@ class TimelineWarp:
         evtx_data = create_empty_evtx()
         with open(evtx_path, "wb") as f:
             f.write(evtx_data)
-        evtx_injector = EVTXInjector(evtx_path)
-        evtx_injector.load()
+        evtx_generator = EVTXGenerator(evtx_path)
+        evtx_generator.load()
 
         record_id = 1
         for event in events:
@@ -130,7 +130,7 @@ class TimelineWarp:
                     computer=narrative.target_computer,
                     logon_type=event.details.get("logon_type", 10),
                 )
-                evtx_injector.inject_record(rec)
+                evtx_generator.add_synthetic_record(rec)
                 record_id += 1
             elif event.event_type == "process":
                 rec = process_creation_4688(
@@ -142,7 +142,7 @@ class TimelineWarp:
                     username=narrative.target_user,
                     computer=narrative.target_computer,
                 )
-                evtx_injector.inject_record(rec)
+                evtx_generator.add_synthetic_record(rec)
                 record_id += 1
             elif event.event_type == "service":
                 rec = service_install_7045(
@@ -152,15 +152,15 @@ class TimelineWarp:
                     image_path=event.details["image_path"],
                     computer=narrative.target_computer,
                 )
-                evtx_injector.inject_record(rec)
+                evtx_generator.add_synthetic_record(rec)
                 record_id += 1
 
-        evtx_injector.save()
+        evtx_generator.save()
         results["evtx"] = evtx_path
 
         # 2. Prefetch — Program execution evidence
         prefetch_dir = os.path.join(self.output_dir, "Prefetch")
-        forge = PrefetchForge(prefetch_dir)
+        forge = PrefetchGenerator(prefetch_dir)
         process_events = [e for e in events if e.event_type == "process"]
 
         prefetch_files = []
@@ -179,7 +179,7 @@ class TimelineWarp:
 
         # 3. Registry — UserAssist + ShimCache
         reg_dir = os.path.join(self.output_dir, "Registry")
-        reg_forge = RegistryForge(reg_dir)
+        reg_forge = RegistryGenerator(reg_dir)
 
         executed_programs = [
             {
@@ -199,7 +199,7 @@ class TimelineWarp:
             for e in file_events
         ]
 
-        reg_results = reg_forge.forge_full_attack_evidence(executed_programs, accessed_files)
+        reg_results = reg_forge.forge_full_test_case_evidence(executed_programs, accessed_files)
         results["registry"] = reg_results
 
         # 4. Chrome History — Browser activity
@@ -207,17 +207,17 @@ class TimelineWarp:
         if download_events:
             chrome_db = os.path.join(self.output_dir, "History")
             create_chrome_history_db(chrome_db)
-            chrome = ChromePoisoner(chrome_db)
+            chrome = ChromeGenerator(chrome_db)
 
             for event in download_events:
-                chrome.inject_visit(
+                chrome.synthesize_visit(
                     url=event.details["url"],
                     title=event.details.get("title", ""),
                     visit_time=event.timestamp,
                     typed_count=1,
                     transition=1,
                 )
-                chrome.inject_download(
+                chrome.synthesize_download(
                     url=event.details["url"],
                     target_path=event.details["target_path"],
                     start_time=event.timestamp,
@@ -227,16 +227,16 @@ class TimelineWarp:
 
         # 5. MFT — File creation evidence
         if file_events:
-            from .mft_injector import create_empty_mft
+            from .mft_generator import create_empty_mft
             mft_path = os.path.join(self.output_dir, "$MFT")
             mft_data = create_empty_mft(256)
             with open(mft_path, "wb") as f:
                 f.write(mft_data)
-            mft_injector = MFTInjector(mft_path)
-            mft_injector.load()
+            mft_generator = MFTGenerator(mft_path)
+            mft_generator.load()
 
             for event in file_events:
-                mft_injector.inject_ghost_file(
+                mft_generator.synthesize_synthetic_file(
                     filename=event.details["filename"],
                     created=event.timestamp - timedelta(days=30),
                     modified=event.timestamp,
@@ -244,19 +244,19 @@ class TimelineWarp:
                     content=event.details.get("content", b""),
                 )
 
-            mft_injector.save()
+            mft_generator.save()
             results["mft"] = mft_path
 
         return results
 
-    def generate_timeline_report(self, narrative: AttackNarrative) -> str:
+    def generate_timeline_report(self, narrative: TestCaseNarrative) -> str:
         """Generate a human-readable timeline report."""
         lines = [
             f"# BlindForge Timeline Report: {narrative.name}",
             f"Target: {narrative.target_user}@{narrative.target_computer}",
             f"Source: {narrative.source_ip}",
             "",
-            "## Fabricated Timeline",
+            "## Generated Timeline",
             "",
         ]
         for event in narrative.get_sorted_events():
@@ -289,12 +289,12 @@ def build_data_breach_narrative(
     target_computer: str = "WORKSTATION-01",
     source_ip: str = "10.0.0.55",
     start_time: Optional[datetime] = None,
-) -> AttackNarrative:
-    """Pre-built narrative: corporate data breach via RDP."""
+) -> TestCaseNarrative:
+    """Pre-built narrative: corporate test scenario via RDP."""
     if start_time is None:
         start_time = datetime(2026, 6, 15, 2, 30, 0, tzinfo=timezone.utc)
 
-    narrative = AttackNarrative(
+    narrative = TestCaseNarrative(
         name="Corporate Data Breach via RDP",
         target_user=target_user,
         target_computer=target_computer,
@@ -320,8 +320,8 @@ def build_data_breach_narrative(
     t += timedelta(minutes=2)
     narrative.add_process(
         t,
-        "C:\\Users\\jdoe\\Desktop\\mimikatz.exe",
-        "mimikatz.exe privilege::debug sekurlsa::logonpasswords",
+        "C:\\Users\\jdoe\\Desktop\\test_tool_a.exe",
+        "test_tool_a.exe privilege::debug sekurlsa::logonpasswords",
     )
 
     # Phase 4: Lateral Movement
@@ -344,7 +344,7 @@ def build_data_breach_narrative(
     t += timedelta(minutes=5)
     narrative.add_download(
         t,
-        url="https://mega.nz/folder/exfil-upload",
+        url="https://example.com/test-storage",
         target_path="C:\\Users\\jdoe\\Downloads\\mega_upload.exe",
         title="MEGA Upload Tool",
     )
@@ -353,7 +353,7 @@ def build_data_breach_narrative(
     narrative.add_process(
         t,
         "C:\\Windows\\System32\\rar.exe",
-        'rar.exe a -hp"password123" C:\\Users\\jdoe\\exfil.rar C:\\sensitive_data\\',
+        'archiver.exe a -hp"password123" C:\\Users\\jdoe\\test_transfer.rar C:\\test_files\\',
     )
 
     # Phase 7: Persistence
@@ -370,11 +370,11 @@ def build_data_breach_narrative(
 if __name__ == "__main__":
     import tempfile
 
-    print("[BlindForge] Timeline Warp — Cross-Source Narrative Fabrication PoC")
+    print("[BlindForge] Timeline Warp — Cross-Source Narrative Generation PoC")
     print("=" * 70)
 
-    output_dir = os.path.join(tempfile.gettempdir(), "timeline_warp")
-    warp = TimelineWarp(output_dir)
+    output_dir = os.path.join(tempfile.gettempdir(), "timeline_synthesizer")
+    warp = TimelineSynthesizer(output_dir)
 
     narrative = build_data_breach_narrative()
     print(f"\n[*] Building narrative: {narrative.name}")
@@ -394,11 +394,11 @@ if __name__ == "__main__":
 
     print(f"\n[+] Timeline report: {report}")
 
-    print("\n[+] Timeline of fabricated events:")
+    print("\n[+] Timeline of generated events:")
     for event in narrative.get_sorted_events():
         ts = event.timestamp.strftime("%H:%M:%S")
         print(f"    [{ts}] {event.description}")
 
     print(f"\n[+] All artifacts in: {output_dir}")
-    print("[!] This is a COMPLETE fabricated attack narrative across 5 artifact sources.")
+    print("[!] This is a COMPLETE generated test_case narrative across 5 artifact sources.")
     print("[!] Plaso/log2timeline will reconstruct a coherent breach that never happened.")

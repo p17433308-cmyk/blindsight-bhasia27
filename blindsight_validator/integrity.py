@@ -2,7 +2,7 @@
 BlindSight Validator — Cross-tool evidence integrity checker.
 
 Validates forensic artifacts by cross-referencing outputs from multiple
-tools, detecting structural anomalies, and identifying fabricated evidence
+tools, detecting structural anomalies, and identifying generated evidence
 through statistical analysis.
 """
 
@@ -36,7 +36,7 @@ class IntegrityAlert:
 
 
 class MFTIntegrityChecker:
-    """Detect fabricated MFT entries."""
+    """Detect generated MFT entries."""
 
     MFT_RECORD_SIZE = 1024
     MFT_MAGIC = b"FILE"
@@ -56,7 +56,7 @@ class MFTIntegrityChecker:
         return self.alerts
 
     def _check_sequence_gaps(self, data: bytes) -> None:
-        """Detect gaps in MFT sequence numbers indicating injection."""
+        """Detect gaps in MFT sequence numbers indicating synthesis."""
         record_count = len(data) // self.MFT_RECORD_SIZE
         sequences = []
 
@@ -85,7 +85,7 @@ class MFTIntegrityChecker:
                         description=(
                             f"MFT record #{rec_num} has sequence number 1 "
                             f"while neighbors have sequences {neighbors}. "
-                            f"This suggests a freshly injected record."
+                            f"This suggests a freshly synthesized record."
                         ),
                         evidence={"record": rec_num, "sequence": seq, "neighbors": neighbors},
                         recommendation="Cross-reference with $LogFile and $UsnJrnl",
@@ -131,7 +131,7 @@ class MFTIntegrityChecker:
         if len(timestamps) < 10:
             return
 
-        # Check for clusters of identical sub-second precision (injection artifact)
+        # Check for clusters of identical sub-second precision (synthesis artifact)
         nanosecond_parts = [t["created"] % 10_000_000 for t in timestamps]
         zero_count = sum(1 for ns in nanosecond_parts if ns == 0)
         zero_ratio = zero_count / len(nanosecond_parts)
@@ -231,7 +231,7 @@ class MFTIntegrityChecker:
                         description=(
                             f"MFT record #{i} has $LogFile sequence number 0 "
                             f"while other records reach LSN {max_lsn}. "
-                            f"Injected records bypass the NTFS journal."
+                            f"Synthesized records bypass the NTFS journal."
                         ),
                         evidence={"record": i, "lsn": 0, "max_lsn": max_lsn},
                         recommendation="Verify against $LogFile and $UsnJrnl entries",
@@ -239,7 +239,7 @@ class MFTIntegrityChecker:
 
 
 class EVTXIntegrityChecker:
-    """Detect fabricated EVTX records."""
+    """Detect generated EVTX records."""
 
     def __init__(self, evtx_path: str):
         self.evtx_path = evtx_path
@@ -284,7 +284,7 @@ class EVTXIntegrityChecker:
                     check_name="record_id_gap",
                     description=(
                         f"EventRecordID gap: {record_ids[i-1]} → {record_ids[i]} "
-                        f"(gap of {gap}). May indicate deleted or injected records."
+                        f"(gap of {gap}). May indicate deleted or synthesized records."
                     ),
                     evidence={"before": record_ids[i - 1], "after": record_ids[i], "gap": gap},
                 ))
@@ -355,7 +355,7 @@ class CrossSourceValidator:
         """Cross-reference program execution evidence across sources.
 
         Legitimate execution typically leaves traces in multiple sources.
-        Evidence in only one source may indicate fabrication.
+        Evidence in only one source may indicate generation.
         """
         all_programs = set()
         all_programs.update(prefetch_programs)
@@ -385,7 +385,7 @@ class CrossSourceValidator:
                         f"{sources[0]}. Legitimate execution typically leaves "
                         f"traces in multiple sources (Prefetch, UserAssist, "
                         f"ShimCache, Event Logs). Single-source evidence may "
-                        f"indicate targeted artifact injection."
+                        f"indicate targeted artifact synthesis."
                     ),
                     evidence={"program": prog, "sources": sources},
                     recommendation=(
@@ -403,7 +403,7 @@ class CrossSourceValidator:
                     description=(
                         f"Program '{prog}' confirmed across {len(sources)} "
                         f"sources: {', '.join(sources)}. "
-                        f"Note: sophisticated fabrication can plant consistent "
+                        f"Note: sophisticated generation can plant consistent "
                         f"evidence across all sources."
                     ),
                     evidence={"program": prog, "sources": sources},

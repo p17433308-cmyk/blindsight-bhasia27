@@ -1,5 +1,5 @@
 """
-BlindForge Registry Forge — Inject fabricated Windows Registry artifacts.
+BlindForge Registry Forge — Synthesize generated Windows Registry artifacts.
 
 Creates fake UserAssist, RecentDocs, MRU, ShimCache, and AppCompatFlags
 entries in raw registry hive files. Forensic tools parse these as evidence
@@ -150,7 +150,7 @@ class RecentDocsEntry:
         return name_bytes + shell_item
 
 
-class RegistryForge:
+class RegistryGenerator:
     """High-level interface for forging registry artifacts."""
 
     def __init__(self, output_dir: str):
@@ -164,7 +164,7 @@ class RegistryForge:
     ) -> str:
         """Create a registry data file with UserAssist entries.
 
-        In a real attack, these would be injected into NTUSER.DAT.
+        In a real test_case, these would be synthesized into NTUSER.DAT.
         For the PoC, we create the raw value data that can be imported.
         """
         output = os.path.join(self.output_dir, "userassist_payload.bin")
@@ -223,12 +223,12 @@ class RegistryForge:
                 f.write(data)
         return output
 
-    def forge_full_attack_evidence(
+    def forge_full_test_case_evidence(
         self,
         executed_programs: list[dict],
         accessed_files: list[dict],
     ) -> dict:
-        """Forge a complete set of registry artifacts for an attack narrative.
+        """Forge a complete set of registry artifacts for an test_case narrative.
 
         executed_programs: [{"path": str, "run_time": datetime, "run_count": int}]
         accessed_files: [{"filename": str, "extension": str}]
@@ -267,15 +267,15 @@ class RegistryForge:
 if __name__ == "__main__":
     import tempfile
 
-    print("[BlindForge] Registry Forge — Registry Artifact Fabrication PoC")
+    print("[BlindForge] Registry Forge — Registry Artifact Generation PoC")
     print("=" * 60)
 
-    output_dir = os.path.join(tempfile.gettempdir(), "registry_forge")
-    forge = RegistryForge(output_dir)
+    output_dir = os.path.join(tempfile.gettempdir(), "registry_generator")
+    forge = RegistryGenerator(output_dir)
 
     executed = [
         {
-            "path": "C:\\Users\\jdoe\\Desktop\\mimikatz.exe",
+            "path": "C:\\Users\\jdoe\\Desktop\\test_tool_a.exe",
             "run_time": datetime(2026, 6, 15, 2, 33, 0, tzinfo=timezone.utc),
             "run_count": 3,
         },
@@ -285,7 +285,7 @@ if __name__ == "__main__":
             "run_count": 1,
         },
         {
-            "path": "C:\\Users\\jdoe\\Downloads\\procdump64.exe",
+            "path": "C:\\Users\\jdoe\\Downloads\\test_tool_b.exe",
             "run_time": datetime(2026, 6, 15, 2, 40, 0, tzinfo=timezone.utc),
             "run_count": 2,
         },
@@ -298,7 +298,7 @@ if __name__ == "__main__":
         {"filename": "vpn_config.ovpn", "extension": ".ovpn"},
     ]
 
-    results = forge.forge_full_attack_evidence(executed, accessed)
+    results = forge.forge_full_test_case_evidence(executed, accessed)
 
     print(f"\n[+] Forged registry artifacts in: {output_dir}")
     print(f"\n    UserAssist payload: {results['userassist']}")
@@ -312,6 +312,6 @@ if __name__ == "__main__":
     for f_spec in accessed:
         print(f"      {f_spec['filename']}")
 
-    print("\n[+] Inject into NTUSER.DAT / SYSTEM hive on a disk image")
+    print("\n[+] Synthesize into NTUSER.DAT / SYSTEM hive on a disk image")
     print("[+] RegRipper/Registry Explorer will show program execution + file access")
     print("\n[!] None of these programs were run. No files were accessed.")

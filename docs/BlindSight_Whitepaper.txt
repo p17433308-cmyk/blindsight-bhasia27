@@ -18,7 +18,7 @@ Generation -- that assess whether forensic tools can distinguish authentic
 artifacts from synthetically generated ones. Our framework generates
 structurally valid, cross-source-consistent synthetic artifacts that production
 forensic tools (Autopsy 4.21, Volatility3 2.5, Plaso 20240101) accept without
-warnings. We complement the red-team toolkit (BlindForge) with DiffOracle, an
+warnings. We complement the red-team toolkit (SynthForge) with DiffOracle, an
 automated parser differential finder, and BlindSight Validator, a defensive
 framework for identifying synthetic artifacts. A 2026 Systematization of
 Knowledge survey of 123 anti-forensic research papers found zero prior work on
@@ -115,7 +115,7 @@ never occurred. Target artifacts include:
 
 4.3 Timeline Consistency Testing
 
-The most significant test class. Timeline Warp orchestrates record synthesis
+The most significant test class. Timeline Synthesizer orchestrates record synthesis
 across all artifact types simultaneously, producing a coherent synthetic
 narrative:
 
