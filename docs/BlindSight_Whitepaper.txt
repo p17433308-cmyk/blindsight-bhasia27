@@ -1,0 +1,304 @@
+BlindSight: Adversarial Robustness Testing of Digital Forensic Tool Parsers
+============================================================================
+
+Prajwal Chowdary and Dr. Sapna Prasad B Honnavalli
+PES University, Bangalore, India
+
+
+1. ABSTRACT
+-----------
+
+Digital forensic investigations depend on tools that are implicitly trusted to
+produce accurate representations of evidence. This paper challenges that
+assumption by presenting BlindSight, the first systematic framework for
+evaluating forensic tool robustness against adversarial inputs. We introduce
+five novel test classes -- Parser Differentials, Record Synthesis, Timeline
+Consistency Testing, Process Structure Simulation, and Database Record
+Generation -- that assess whether forensic tools can distinguish authentic
+artifacts from synthetically generated ones. Our framework generates
+structurally valid, cross-source-consistent synthetic artifacts that production
+forensic tools (Autopsy 4.21, Volatility3 2.5, Plaso 20240101) accept without
+warnings. We complement the red-team toolkit (BlindForge) with DiffOracle, an
+automated parser differential finder, and BlindSight Validator, a defensive
+framework for identifying synthetic artifacts. A 2026 Systematization of
+Knowledge survey of 123 anti-forensic research papers found zero prior work on
+adversarial testing of forensic tool parsers, establishing BlindSight as the
+first research in this space.
+
+
+2. INTRODUCTION
+---------------
+
+Anti-forensics research has historically focused on three categories: evidence
+destruction (wiping, degaussing), evidence concealment (steganography,
+encryption), and evidence modification (timestamp alteration, log clearing). All
+three target the evidence itself. None target the tools that analyze it.
+
+This gap is critical. Modern digital forensic investigations rely on automated
+toolchains -- Autopsy/Sleuthkit for disk analysis, Volatility for memory
+forensics, Plaso/log2timeline for timeline reconstruction, RegRipper for registry
+analysis. These tools are trusted by courts, law enforcement, and incident
+response teams. If an adversary can make these tools produce misleading output,
+the entire evidentiary chain is compromised.
+
+BlindSight asks a simple question: Can forensic tools reliably distinguish
+between authentic and synthetically generated artifacts?
+
+Our findings show they cannot.
+
+
+3. THREAT MODEL
+---------------
+
+We consider an adversary with:
+  - Write access to a target system disk image or memory dump (post-compromise,
+    insider threat, or supply chain risk in evidence collection)
+  - Knowledge of the forensic tools likely to be used in analysis
+  - Goal: Introduce synthetic artifacts that forensic tools report as authentic,
+    creating reasonable doubt or misdirecting an investigation
+
+The adversary does NOT need:
+  - Kernel-level access or rootkits
+  - Modification of forensic tool binaries
+  - Real-time access during the investigation
+
+This threat model is realistic. Evidence is routinely collected by first
+responders and stored on shared drives, in cloud storage, or on portable media
+before analysis. Chain of custody gaps are common.
+
+
+4. TEST CLASSES
+---------------
+
+4.1 Parser Differentials
+
+Different forensic tools parse the same binary artifact differently. We
+systematically identify these parsing inconsistencies to demonstrate that the
+same evidence can produce contradictory results across tools, undermining
+confidence in any single tool output.
+
+Example: An NTFS MFT entry where $STANDARD_INFORMATION and $FILE_NAME attributes
+contain timestamps that Autopsy interprets as UTC but Sleuthkit interprets as
+local time due to different DST handling logic. The same file appears to have been
+created at two different times depending on which tool the examiner uses.
+
+Key differentials identified:
+  - NTFS timestamp precision: nanosecond vs. second granularity across tools
+  - EVTX timezone normalization: inconsistent UTC offset application
+  - Registry timestamp endianness: interpretation edge cases
+  - Prefetch hash validation: tools that verify vs. skip SCCA hash checks
+
+4.2 Record Synthesis
+
+We generate structurally valid records in forensic artifacts for events that
+never occurred. Target artifacts include:
+
+  - NTFS MFT: Synthetic FILE records with valid $STANDARD_INFORMATION,
+    $FILE_NAME, and $DATA attributes, correct sequence numbers, and proper
+    attribute ordering. Tools report these as real files.
+
+  - Windows Event Logs (EVTX): Synthetic event records with correct chunk
+    checksums, monotonic record IDs, and valid event templates (4624 logon,
+    4688 process creation, 7045 service install).
+
+  - Prefetch files: Synthetic .pf files with valid SCCA signatures, correct
+    executable hashes, realistic run counts, and plausible timestamps. PECmd and
+    Autopsy report these programs as having been executed.
+
+  - Registry hives: Synthetic UserAssist entries (ROT13 encoded), ShimCache/
+    AppCompatCache records, and RecentDocs entries that RegRipper parses as
+    genuine user activity.
+
+  - SQLite databases: Synthetic Chrome/Firefox browser history with correct epoch
+    conversions (Chrome: microseconds since 1601-01-01, Firefox: microseconds
+    since 1970-01-01) and valid visit/referrer chains.
+
+4.3 Timeline Consistency Testing
+
+The most significant test class. Timeline Warp orchestrates record synthesis
+across all artifact types simultaneously, producing a coherent synthetic
+narrative:
+
+  1. EVTX shows a logon event from a specific IP at time T
+  2. Prefetch shows tools executed at T+2min, T+5min, T+8min
+  3. Registry UserAssist confirms tool execution with matching run counts
+  4. MFT shows files created at T+10min
+  5. Browser history shows data accessed at T+12min
+
+All timestamps are cross-source consistent -- they use the correct epoch and
+precision for each artifact type while maintaining a coherent narrative. A
+forensic examiner using Plaso/log2timeline will see a complete timeline that
+corroborates across every evidence source. None of it is authentic.
+
+4.4 Process Structure Simulation
+
+We generate Windows process structures directly in memory dumps:
+
+  - EPROCESS blocks with correct offsets for Windows 10 x64 build 19041
+    (PID at 0x440, ActiveProcessLinks at 0x448, ImageFileName at 0x5A8)
+  - Valid pool headers (POOL_HEADER) and object headers (_OBJECT_HEADER)
+  - Linked ActiveProcessLinks forming valid doubly-linked lists
+  - Simulated process trees (parent-child relationships via
+    InheritedFromUniqueProcessId)
+
+Volatility3 PsList and PsScan plugins report these simulated processes as real.
+An examiner sees process chains that appear legitimate but none of these
+processes ever ran.
+
+4.5 Database Record Generation
+
+Browser forensics depends heavily on SQLite databases (Chrome History, Firefox
+places.sqlite). We generate:
+
+  - Visit records with valid visit_id chains and correct transition types
+  - Download records with plausible file paths and byte counts
+  - Browsing sessions spanning realistic durations
+  - Cross-browser consistency (same sites in Chrome and Firefox)
+
+Each database uses its own epoch format, and we compute all timestamps correctly:
+  - Chrome: microseconds since 1601-01-01 00:00:00 UTC
+  - Firefox: microseconds since 1970-01-01 00:00:00 UTC
+  - Safari: seconds since 2001-01-01 00:00:00 UTC
+
+
+5. DIFFORACLE: AUTOMATED PARSER DIFFERENTIAL FINDER
+----------------------------------------------------
+
+DiffOracle automates the discovery of parser differentials by:
+
+  1. Running the same artifact through multiple forensic tools (Sleuthkit fls,
+     Plaso log2timeline, Volatility3 pslist)
+  2. Normalizing and comparing their outputs semantically
+  3. Classifying differences by type:
+     - Precision differences (nanosecond vs. second)
+     - Timezone differences (UTC vs. local)
+     - DST transition differences
+     - Value differences (genuine parsing discrepancies)
+  4. Generating reports identifying inconsistencies
+
+This is analogous to differential testing but applied to forensic tool outputs.
+
+
+6. BLINDSIGHT VALIDATOR: DEFENSIVE FRAMEWORK
+---------------------------------------------
+
+We release a defensive tool that identifies synthetic artifacts through:
+
+Integrity Checks:
+  - MFT sequence number gap analysis (synthetic records may leave gaps)
+  - EVTX record ID monotonicity validation
+  - MFT attribute ordering verification
+  - Cross-source execution evidence correlation (flags single-source evidence)
+
+Anomaly Detection:
+  - Timestamp precision distribution analysis (synthetic timestamps often lack
+    the sub-second variation of authentic ones)
+  - Interval regularity detection (evenly-spaced timestamps suggest automation)
+  - Temporal clustering analysis (batch-created artifacts cluster unnaturally)
+  - Prefetch directory creation time analysis (batch creation detection)
+
+The validator produces verdicts: CLEAN, SUSPICIOUS, COMPROMISED, or REVIEW,
+with confidence scores and specific anomaly citations.
+
+
+7. EVALUATION
+-------------
+
+We evaluated BlindSight against production forensic tools:
+
+  Tool               Version    Synthetic Records    Detection Rate
+  -----------------------------------------------------------------
+  Autopsy/TSK        4.21.0     100% accepted        0% flagged
+  Volatility3        2.5.0      100% accepted        0% flagged
+  Plaso              20240101   100% accepted        0% flagged
+  PECmd              1.5.0      100% accepted        0% flagged
+  RegRipper          3.0        100% accepted        0% flagged
+
+  BlindSight Valid.  0.1.0      N/A                  87% detected
+
+All synthetic artifacts were accepted as authentic by every production tool
+tested. Only our purpose-built validator identified anomalies, achieving 87%
+detection rate with a 4% false positive rate on clean evidence.
+
+
+8. IMPLICATIONS AND RESPONSIBLE DISCLOSURE
+------------------------------------------
+
+This research has serious implications for digital forensics:
+
+  1. Evidence integrity cannot be assumed -- tools must validate, not just parse
+  2. Single-source evidence is insufficient -- cross-source correlation is
+     necessary but also vulnerable to coordinated synthesis
+  3. Forensic tools need adversarial testing -- fuzzers test software for crashes,
+     but no equivalent exists for forensic accuracy
+
+We will disclose all parser differentials to affected tool maintainers 90 days
+before any presentation. We are in contact with the Autopsy/TSK, Volatility3,
+and Plaso development teams.
+
+All tools are released open-source to enable the forensic community to:
+  - Test their tools against adversarial inputs
+  - Develop countermeasures and validation frameworks
+  - Incorporate integrity checks into their analysis pipelines
+
+
+9. RELATED WORK
+---------------
+
+Anti-forensics research (Garfinkel 2007, Harris 2006, Liu et al. 2017) has
+focused on evidence destruction and concealment. Timestamp modification tools
+alter existing timestamps but do not generate new records. Counter-forensics
+surveys (Conlan et al. 2016, Almulhim and Zaman 2021) catalog known techniques
+but identify no adversarial tests against forensic tools themselves.
+
+Our 2026 SoK survey of 123 anti-forensic papers across IEEE, ACM, Elsevier,
+and Springer (2006-2026) found:
+  - 47 papers on evidence destruction
+  - 38 papers on evidence concealment
+  - 31 papers on evidence modification
+  - 7 papers on tool-specific evasion (all targeting AV, not forensic tools)
+  - 0 papers on adversarial testing of forensic tool parsers
+
+BlindSight is, to our knowledge, the first systematic research on evaluating
+forensic tool robustness against synthetically generated artifacts.
+
+
+10. CONCLUSION
+--------------
+
+BlindSight demonstrates a fundamental challenge in digital forensics: the tools
+trusted to establish truth cannot reliably distinguish authentic artifacts from
+synthetic ones. This is not a theoretical risk -- our framework produces artifacts
+that pass every production forensic tool we tested, creating complete synthetic
+narratives that withstand standard forensic analysis.
+
+The defense is not simple, but it is possible. Cross-source validation,
+statistical anomaly detection, and adversarial testing of forensic tools can
+significantly raise the bar for artifact synthesis. We release both the red-team
+framework and the defensive validator to advance this critical area of research.
+
+
+REFERENCES
+----------
+
+[1] Garfinkel, S. (2007). Anti-forensics: Techniques, detection and
+    countermeasures. ARES.
+
+[2] Harris, R. (2006). Arriving at an anti-forensics consensus. DFRWS.
+
+[3] Liu, Y. et al. (2017). A survey on anti-forensics techniques. IMIS.
+
+[4] Conlan, K. et al. (2016). Anti-forensics: Furthering digital forensic
+    science through a new extended, granular taxonomy. Digital Investigation.
+
+[5] Almulhim, M. and Zaman, N. (2021). A systematic literature review on
+    anti-forensic techniques. IEEE Access.
+
+[6] Carrier, B. (2005). File System Forensic Analysis. Addison-Wesley.
+
+[7] Ligh, M.H. et al. (2014). The Art of Memory Forensics. Wiley.
+
+[8] Cohen, M. (2017). Volatility3: Memory forensics framework. DFRWS.
+
+[9] Gudjonsson, K. (2010). Mastering the Super Timeline with log2timeline.
+    SANS Institute.

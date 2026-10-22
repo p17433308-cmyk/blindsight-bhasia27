@@ -9,7 +9,8 @@ legitimate file evidence.
 
 import struct
 import os
-from datetime import datetime, timezone
+import random
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 # NTFS epoch: 1601-01-01 00:00:00 UTC
@@ -26,11 +27,18 @@ FILE_RECORD_IN_USE = 0x01
 FILE_RECORD_IS_DIRECTORY = 0x02
 
 
-def datetime_to_ntfs(dt: datetime) -> int:
+def datetime_to_ntfs(dt: datetime, jitter_ns: bool = False) -> int:
+    """Convert datetime to NTFS FILETIME (100ns intervals since 1601-01-01).
+    If jitter_ns=True, adds realistic sub-100ns noise to avoid detection
+    by tools like MFTECmd that flag zero-precision timestamps.
+    """
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     delta = dt - NTFS_EPOCH
-    return int(delta.total_seconds() * 10_000_000)
+    ft = int(delta.total_seconds() * 10_000_000)
+    if jitter_ns:
+        ft += random.randint(1000, 9999999)
+    return ft
 
 
 def ntfs_to_datetime(filetime: int) -> datetime:
@@ -56,11 +64,22 @@ class MFTRecord:
         mft_modified: datetime,
         accessed: datetime,
         file_attributes: int = 0x20,  # ARCHIVE
+        usn: int = 0,
+        security_id: int = 0x100,
+        evasion: bool = False,
     ) -> None:
-        ts_created = datetime_to_ntfs(created)
-        ts_modified = datetime_to_ntfs(modified)
-        ts_mft_modified = datetime_to_ntfs(mft_modified)
-        ts_accessed = datetime_to_ntfs(accessed)
+        """Build $STANDARD_INFORMATION attribute.
+        With evasion=True, adds sub-second jitter and realistic USN/security_id
+        to bypass MFTECmd/Timeline Explorer anomaly detection.
+        """
+        jitter = evasion
+        ts_created = datetime_to_ntfs(created, jitter_ns=jitter)
+        ts_modified = datetime_to_ntfs(modified, jitter_ns=jitter)
+        ts_mft_modified = datetime_to_ntfs(mft_modified, jitter_ns=jitter)
+        ts_accessed = datetime_to_ntfs(accessed, jitter_ns=jitter)
+
+        if evasion and usn == 0:
+            usn = random.randint(0x1000000, 0xFFFFFFF) * 8
 
         si_body = struct.pack(
             "<QQQQI",
@@ -70,9 +89,17 @@ class MFTRecord:
             ts_accessed,
             file_attributes,
         )
-        # Pad to 72 bytes (Windows stores additional fields: max_versions,
-        # version_number, class_id, owner_id, security_id, quota, usn)
-        si_body += b"\x00" * (72 - len(si_body))
+        # Extended $SI fields (NTFS 3.0+): max_versions, version_number,
+        # class_id, owner_id, security_id, quota_charged, usn
+        si_body += struct.pack("<IIIIIQQ",
+            0,              # max_versions
+            0,              # version_number
+            0,              # class_id
+            0,              # owner_id
+            security_id,    # security_id — MFTECmd parses this
+            0,              # quota_charged
+            usn,            # update_sequence_number — MFTECmd checks this
+        )
 
         attr = self._make_resident_attr(ATTR_STANDARD_INFORMATION, si_body)
         self.attributes.append(attr)

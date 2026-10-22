@@ -23,3 +23,10 @@ env/
 *.pf
 output/
 demo_output/
+demo/comparison/clean/*.raw
+demo/comparison/poisoned/*.raw
+demo/comparison/*/memory.raw
+demo/comparison/*/Prefetch/
+demo/comparison/*/Registry/
+demo/comparison/*/*.evtx
+demo/output/
